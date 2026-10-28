@@ -53,7 +53,7 @@ export const Footer = () => {
             </div>
             <ul className="space-y-2 text-sm text-slate-600 font-medium">
               <li>
-                <a href="https://x.com/HelloDottaa" target="_blank" rel="noreferrer" className="hover:text-black transition-colors flex items-center gap-1">
+                <a href="https://x.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors flex items-center gap-1">
                   <span>X (Twitter)</span>
                   <ArrowUpRight className="h-3 w-3" />
                 </a>
