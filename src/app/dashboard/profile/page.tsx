@@ -8,12 +8,13 @@ import {
 import { EditProfileModal } from '@/components/profile/EditProfileModal';
 import { useTheme } from '@/context/ThemeContext';
 import { toast } from 'sonner';
+import { detectRealUserLocation } from '@/lib/geo';
 
 export default function ProfilePage() {
   const { theme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [wallet, setWallet] = useState<any>(null); // ✅ Corrected state name
+  const [wallet, setWallet] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -32,7 +33,17 @@ export default function ProfilePage() {
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
-      setProfile(profileData);
+
+      let finalProfile = profileData;
+      if (!profileData?.country?.trim()) {
+        const loc = await detectRealUserLocation();
+        if (loc.country && loc.country !== 'International') {
+          finalProfile = { ...(profileData || {}), country: loc.country };
+          // Auto-save real country to profile
+          await supabase.from('profiles').update({ country: loc.country }).eq('id', user.id);
+        }
+      }
+      setProfile(finalProfile);
 
       // 2. Fetch Wallet (Correct place for Readable ID)
       const { data: walletData } = await supabase
@@ -90,7 +101,7 @@ export default function ProfilePage() {
         </div>
         <button 
           onClick={() => setShowEdit(true)}
-          className="bg-primary/10 hover:bg-primary/20 text-emerald-600 border border-primary/20 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all"
+          className="bg-primary/10 hover:bg-primary/20 text-emerald-600 border border-primary/20 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all cursor-pointer"
         >
           <Edit2 size={16} /> Edit
         </button>
@@ -118,6 +129,7 @@ export default function ProfilePage() {
                   profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || "U"
                )}
             </div>
+            
             <button 
                onClick={() => setShowEdit(true)}
                className={`absolute bottom-0 right-0 p-2 rounded-full border-4 z-20 hover:scale-110 transition-transform cursor-pointer
@@ -141,7 +153,7 @@ export default function ProfilePage() {
             {/* CLICKABLE ID BADGE */}
             <button 
               onClick={handleCopyID}
-              className={`group flex items-center gap-2 border active:scale-95 transition-all px-3 py-1.5 rounded-lg
+              className={`group flex items-center gap-2 border active:scale-95 transition-all px-3 py-1.5 rounded-lg cursor-pointer
                  ${isDark 
                    ? 'bg-white/5 hover:bg-white/10 border-white/10' 
                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
@@ -188,12 +200,12 @@ export default function ProfilePage() {
             isDark={isDark}
          />
 
-         {/* Country */}
+         {/* Country / Region */}
          <DetailRow 
             icon={Globe} 
             label="Region" 
             value={profile?.country} 
-            placeholder="Not Set"
+            placeholder="Auto-detecting..."
             theme={theme}
             isDark={isDark}
          />
@@ -208,24 +220,39 @@ export default function ProfilePage() {
          />
 
       </div>
+
     </div>
   );
 }
 
-// --- REUSABLE ROW COMPONENT ---
-function DetailRow({ icon: Icon, label, value, placeholder, isVerified, isDark }: any) {
-  return (
-     <div className={`border p-4 rounded-xl flex items-center gap-4 ${isDark ? 'bg-[#0a0a0a] border-white/10' : 'bg-white border-slate-200'}`}>
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isDark ? 'bg-zinc-900 text-zinc-400' : 'bg-slate-100 text-slate-500'}`}>
-           <Icon size={18} />
-        </div>
-        <div className="flex-1 overflow-hidden">
-           <div className="text-xs font-bold text-zinc-500 uppercase">{label}</div>
-           <div className={`text-sm ${value ? (isDark ? 'text-white' : 'text-slate-900') : 'text-zinc-500 italic'}`}>
-              {value || placeholder}
-           </div>
-        </div>
-        {isVerified && <Shield size={16} className="text-primary shrink-0" />}
-     </div>
-  );
+// Subcomponent for Details List
+function DetailRow({ icon: Icon, label, value, isVerified = false, placeholder, isDark }: any) {
+   return (
+      <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors
+         ${isDark 
+           ? 'bg-[#0a0a0a] border-white/5' 
+           : 'bg-white border-slate-200'
+         }
+      `}>
+         <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center
+               ${isDark ? 'bg-zinc-900 text-zinc-400' : 'bg-slate-100 text-slate-500'}
+            `}>
+               <Icon size={20} />
+            </div>
+            <div>
+               <p className="text-xs text-zinc-500 font-medium">{label}</p>
+               <p className={`text-sm font-semibold mt-0.5 ${!value ? 'text-zinc-500 italic' : (isDark ? 'text-white' : 'text-slate-900')}`}>
+                  {value || placeholder}
+               </p>
+            </div>
+         </div>
+
+         {isVerified && (
+            <span className="flex items-center gap-1 text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 px-2 py-0.5 rounded-full">
+               <Shield size={10} /> Verified
+            </span>
+         )}
+      </div>
+   );
 }

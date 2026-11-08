@@ -1,9 +1,10 @@
 "use client";
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
 import { X, Save, Loader2, Globe, Phone, User, Camera } from 'lucide-react';
 import { toast } from 'sonner';
-import { useTheme } from '@/context/ThemeContext'; // ✅ Added Theme Support
+import { useTheme } from '@/context/ThemeContext';
+import { detectRealUserLocation } from '@/lib/geo';
 
 export function EditProfileModal({ user, profile, onClose, onUpdate }: any) {
   const { theme } = useTheme();
@@ -19,6 +20,16 @@ export function EditProfileModal({ user, profile, onClose, onUpdate }: any) {
   });
 
   const supabase = createClient();
+
+  useEffect(() => {
+    if (!formData.country) {
+      detectRealUserLocation().then(loc => {
+        if (loc.country && loc.country !== 'International') {
+          setFormData(prev => prev.country ? prev : ({ ...prev, country: loc.country }));
+        }
+      });
+    }
+  }, []);
 
   // 1. HANDLE IMAGE UPLOAD
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,38 +107,46 @@ export function EditProfileModal({ user, profile, onClose, onUpdate }: any) {
         
         <div className="flex items-center justify-between mb-6">
           <h3 className={`text-xl font-bold ${textMain}`}>Edit Profile</h3>
-          <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+          <button onClick={onClose} className={`p-2 rounded-full transition-colors cursor-pointer ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
             <X size={20} className={textSub} />
           </button>
         </div>
 
-        <div className="space-y-4">
-          
-          {/* IMAGE UPLOADER */}
-          <div className="flex justify-center mb-6">
-            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <div className={`w-24 h-24 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden
-                 ${isDark ? 'bg-zinc-800 border-white/20' : 'bg-slate-100 border-slate-300'}
-              `}>
-                {formData.avatar_url ? (
-                  <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <User size={32} className={textSub} />
-                )}
-              </div>
-              <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                {uploading ? <Loader2 className="animate-spin text-white" /> : <Camera className="text-white" />}
-              </div>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleImageUpload} 
-                accept="image/*" 
-                className="hidden" 
-              />
+        {/* AVATAR SELECTOR */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <div className="w-20 h-20 rounded-full bg-zinc-800 border-2 border-primary/40 overflow-hidden flex items-center justify-center text-2xl font-bold">
+               {formData.avatar_url ? (
+                 <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+               ) : (
+                 <User size={32} className="text-zinc-400" />
+               )}
             </div>
-          </div>
+            
+            {/* OVERLAY ON HOVER */}
+            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera size={20} className="text-white" />
+            </div>
 
+            {uploading && (
+              <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
+                <Loader2 size={20} className="animate-spin text-primary" />
+              </div>
+            )}
+          </div>
+          
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImageUpload} 
+            accept="image/*" 
+            className="hidden" 
+          />
+          <span className="text-[11px] text-zinc-500 mt-2 font-medium">Click to change picture</span>
+        </div>
+
+        {/* INPUTS */}
+        <div className="space-y-4">
           <InputField 
              label="Full Name" 
              value={formData.full_name} 
@@ -141,7 +160,7 @@ export function EditProfileModal({ user, profile, onClose, onUpdate }: any) {
           />
 
           <InputField 
-             label="Mobile Number" 
+             label="Phone Number" 
              value={formData.phone} 
              onChange={(e: any) => setFormData({...formData, phone: e.target.value})}
              icon={Phone}
@@ -157,7 +176,7 @@ export function EditProfileModal({ user, profile, onClose, onUpdate }: any) {
              value={formData.country} 
              onChange={(e: any) => setFormData({...formData, country: e.target.value})}
              icon={Globe}
-             placeholder="United States"
+             placeholder="e.g. France, United States..."
              isDark={isDark}
              inputBg={inputBg}
              textMain={textMain}
@@ -167,7 +186,7 @@ export function EditProfileModal({ user, profile, onClose, onUpdate }: any) {
           <button 
             onClick={handleSave}
             disabled={loading || uploading}
-            className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-4 rounded-xl mt-4 flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
+            className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-4 rounded-xl mt-4 flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-lg shadow-primary/20 cursor-pointer"
           >
             {loading ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Save Changes</>}
           </button>
@@ -183,15 +202,16 @@ function InputField({ label, value, onChange, icon: Icon, placeholder, isDark, i
   return (
       <div>
         <label className={`text-xs font-bold uppercase mb-2 block ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>{label}</label>
-        <div className="relative">
-          <Icon size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-zinc-500' : 'text-slate-400'}`} />
-          <input 
-            value={value}
-            onChange={onChange}
-            className={`w-full rounded-xl pl-10 pr-4 py-3 outline-none focus:border-primary transition-all border ${inputBg} ${textMain} ${border}`}
-            placeholder={placeholder}
-          />
+        <div className={`relative flex items-center ${inputBg} border ${border} rounded-xl px-4 py-3 focus-within:border-primary transition-colors`}>
+           <Icon size={18} className="text-zinc-500 mr-3 shrink-0" />
+           <input 
+              type="text" 
+              value={value} 
+              onChange={onChange} 
+              placeholder={placeholder}
+              className={`bg-transparent w-full outline-none text-sm font-semibold ${textMain} placeholder:text-zinc-600`}
+           />
         </div>
       </div>
-  )
+  );
 }

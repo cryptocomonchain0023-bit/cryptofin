@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { toast } from 'sonner';
+import { detectRealUserLocation } from '@/lib/geo';
+import { EditProfileModal } from '@/components/profile/EditProfileModal';
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
@@ -17,16 +19,18 @@ export default function SettingsPage() {
   
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [wallet, setWallet] = useState<any>(null); // ✅ Replaces securityData
+  const [wallet, setWallet] = useState<any>(null);
+  const [detectedCountry, setDetectedCountry] = useState<string>('');
+  const [showEdit, setShowEdit] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
+  const fetchUserData = async () => {
+    try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
 
-        // 1. Fetch Wallet (Correct place for Readable ID)
+        // 1. Fetch Wallet
         const { data: w } = await supabase
           .from('wallets')
           .select('readable_id')
@@ -35,7 +39,7 @@ export default function SettingsPage() {
         
         setWallet(w);
 
-        // 2. Fetch Profile (If exists)
+        // 2. Fetch Profile
         const { data: prof } = await supabase
           .from('profiles')
           .select('*')
@@ -49,15 +53,37 @@ export default function SettingsPage() {
           .eq('user_id', user.id)
           .maybeSingle();
 
+        let currentCountry = prof?.country?.trim();
+
+        // 4. If profile.country is empty, auto-detect real location
+        if (!currentCountry) {
+          const loc = await detectRealUserLocation();
+          if (loc.country && loc.country !== 'International') {
+            currentCountry = loc.country;
+            setDetectedCountry(loc.country);
+            // Save real detected country to Supabase so it persists
+            await supabase.from('profiles').update({ country: loc.country }).eq('id', user.id);
+          }
+        } else {
+          setDetectedCountry(currentCountry);
+        }
+
         if (prof) {
           prof.kyc_status = kyc?.status || 'unverified';
+          prof.country = currentCountry || prof.country;
           setProfile(prof);
         } else {
-          setProfile({ kyc_status: kyc?.status || 'unverified' });
+          setProfile({ kyc_status: kyc?.status || 'unverified', country: currentCountry });
         }
       }
+    } catch (err) {
+      console.error('Error fetching settings user data:', err);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     fetchUserData();
   }, []);
 
@@ -100,6 +126,15 @@ export default function SettingsPage() {
   return (
     <div className="pb-32 animate-in fade-in duration-500 p-4 md:p-8 pt-[max(env(safe-area-inset-top),1.5rem)] md:pt-[max(env(safe-area-inset-top),2rem)]">
       
+      {showEdit && (
+        <EditProfileModal 
+          user={user} 
+          profile={profile} 
+          onClose={() => setShowEdit(false)} 
+          onUpdate={fetchUserData} 
+        />
+      )}
+
       <h1 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-slate-900'}`}>Settings</h1>
       
       {/* 1. PROFILE CARD */}
@@ -138,20 +173,18 @@ export default function SettingsPage() {
                  <CheckCircle size={10} /> Verified L1
                </span>
              ) : profile?.kyc_status === 'pending' ? (
-               <span className="flex items-center gap-1 text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase">
-                 <CheckCircle size={10} /> Pending KYC
+               <span className="flex items-center gap-1 text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded border border-amber-500/20 font-bold uppercase">
+                 Pending KYC
                </span>
              ) : (
-               <span className="flex items-center gap-1 text-[10px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded border border-red-500/20 font-bold uppercase">
-                 <Lock size={10} /> Unverified
+               <span className="flex items-center gap-1 text-[10px] bg-zinc-500/10 text-zinc-400 px-2 py-0.5 rounded border border-white/10 font-bold uppercase">
+                 Unverified
                </span>
              )}
            </div>
         </div>
-        <ChevronRight size={20} className="text-zinc-500 absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
-      {/* 2. GENERAL SETTINGS */}
       <div className="space-y-6">
         
         {/* Account Section */}
@@ -160,27 +193,21 @@ export default function SettingsPage() {
           <div className={`border rounded-2xl overflow-hidden divide-y ${isDark ? 'bg-[#0a0a0a] border-white/10 divide-white/5' : 'bg-white border-slate-200 divide-slate-100'}`}>
              <SettingRow 
                icon={User} 
-               label="Personal Information" 
-               subLabel="Name, Date of Birth, Address"
-               action={() => router.push('/dashboard/profile')} 
-             />
-             <SettingRow 
-               icon={FileText} 
-               label="Identity Verification" 
-               subLabel={profile?.kyc_status === 'approved' ? 'Verified L1 Account' : profile?.kyc_status === 'pending' ? 'Verification Pending' : 'Unlock full account access'}
-               action={() => router.push(profile?.kyc_status === 'approved' ? '/dashboard/profile' : '/dashboard/settings/kyc')} 
+               label="Profile Details" 
+               subLabel="Name, Phone, Country"
+               action={() => setShowEdit(true)} 
              />
              <SettingRow 
                icon={CreditCard} 
-               label="Limits & Features" 
-               subLabel="Withdrawal limit: $5,000,000/day"
-               action={() => {}} 
+               label="Identity Verification (KYC)" 
+               subLabel={profile?.kyc_status === 'approved' ? "Tier 1 Verified" : "Verification required"}
+               action={() => router.push('/dashboard/settings/kyc')} 
              />
              <SettingRow 
                icon={Globe} 
                label="Language & Region" 
-               subLabel={`${profile?.country || "Nigeria"} • English (US)`}
-               action={() => {}} 
+               subLabel={`${profile?.country || detectedCountry || "Auto-detecting"} • English (US)`}
+               action={() => setShowEdit(true)} 
              />
           </div>
         </div>
