@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { SecurityProvider } from '@/context/SecurityContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { LiveChat } from '@/components/LiveChat';
+import { GoogleTranslateFix } from '@/components/GoogleTranslateFix';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" }); 
@@ -16,6 +17,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.cryptofin.org'),
   title: "Cryptofin | Beyond Digital Assets",
   description: "The secure, custodial standard for the digital economy.",
   manifest: "/manifest.json", 
@@ -62,6 +64,7 @@ export default function RootLayout({
         suppressHydrationWarning={true}
         className={`${inter.variable} ${outfit.variable} antialiased bg-[#050505] text-white pb-safe`}
       >
+        <GoogleTranslateFix />
         <ThemeProvider>
           <Toaster position="top-center" richColors closeButton />
           <SecurityProvider>

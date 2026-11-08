@@ -208,11 +208,13 @@ function VerifyEmailForm() {
                   resending ? 'animate-spin' : timer > 0 ? 'animate-spin-slow' : ''
                 }`}
               />
-              {resending
-                ? 'Sending...'
-                : timer > 0
-                ? `Resend code in 00:${timer.toString().padStart(2, '0')}`
-                : 'Resend code'}
+              <span className="inline-block">
+                {resending
+                  ? 'Sending...'
+                  : timer > 0
+                  ? `Resend code in 00:${timer.toString().padStart(2, '0')}`
+                  : 'Resend code'}
+              </span>
             </button>
           </div>
 
