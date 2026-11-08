@@ -4,20 +4,17 @@ import "./globals.css";
 import { Toaster } from 'sonner'; 
 import { SecurityProvider } from '@/context/SecurityContext';
 import { ThemeProvider } from '@/context/ThemeContext';
-// 1. Import the component (Ensure you created src/components/LiveChat.tsx)
 import { LiveChat } from '@/components/LiveChat';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" }); 
 
-// 1. VIEWPORT: Fixes Zooming & Notch Issues
 export const viewport: Viewport = {
   width: "device-width",
   viewportFit: "cover",
   themeColor: "#050505", 
 };
 
-// 2. APP METADATA
 export const metadata: Metadata = {
   title: "Cryptofin | Beyond Digital Assets",
   description: "The secure, custodial standard for the digital economy.",
@@ -63,24 +60,16 @@ export default function RootLayout({
     <html lang="en">
       <body 
         suppressHydrationWarning={true}
-        // 3. ADD 'pb-safe': Adds padding for the iPhone Home Bar
         className={`${inter.variable} ${outfit.variable} antialiased bg-[#050505] text-white pb-safe`}
       >
-
         <ThemeProvider>
-            <Toaster position="top-center" theme="dark" />
-            <SecurityProvider>
-               {children}
-            </SecurityProvider>
-            
-            {/* ✅ LiveChat injected here (Safe from Hydration Errors) */}
-            <LiveChat />
-            
+          <Toaster position="top-center" richColors closeButton />
+          <SecurityProvider>
+            {children}
+          </SecurityProvider>
+          <LiveChat />
         </ThemeProvider>
       </body>
     </html>
   );
 }
-
-
-

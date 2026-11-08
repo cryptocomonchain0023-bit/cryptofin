@@ -17,8 +17,8 @@ export default function GasConfigPage() {
             const { data: wallets } = await supabase.from('wallets').select('user_id, readable_id, gas_override');
             
             if (data && wallets) {
-                const combined = data.map(u => {
-                    const w = wallets.find(w => w.user_id === u.id);
+                const combined = data.map((u: any) => {
+                    const w = wallets.find((w: any) => w.user_id === u.id);
                     return { ...u, readable_id: w?.readable_id, gas_override: w?.gas_override || false };
                 });
                 setUsers(combined);

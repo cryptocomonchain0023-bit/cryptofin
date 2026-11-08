@@ -20,12 +20,14 @@ export function AuthPageWrapper({ children, titleTop, titleMain, subtitle, image
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({
-        x: e.clientX / window.innerWidth,
-        y: e.clientY / window.innerHeight
-      });
+      if (typeof window !== 'undefined' && window.innerWidth > 0 && window.innerHeight > 0) {
+        setMousePos({
+          x: e.clientX / window.innerWidth,
+          y: e.clientY / window.innerHeight
+        });
+      }
     };
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
@@ -48,8 +50,15 @@ export function AuthPageWrapper({ children, titleTop, titleMain, subtitle, image
       <header className="w-full p-6 lg:px-12 flex justify-between items-center z-20 relative">
         <div className="flex items-center gap-6">
           <button 
-            onClick={() => router.back()}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm active:scale-95"
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/');
+              }
+            }}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm active:scale-95 cursor-pointer"
             aria-label="Go back"
           >
             <ChevronLeft className="w-5 h-5" />

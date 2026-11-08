@@ -82,7 +82,7 @@ export default function WalletPage() {
 
     if (txs) {
       let inc = 0; let exp = 0;
-      txs.forEach(tx => {
+      txs.forEach((tx: any) => {
           if (tx.type === 'deposit') inc += Number(tx.amount);
           if (tx.type === 'withdraw' || tx.type === 'send') exp += Number(tx.amount);
       });
