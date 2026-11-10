@@ -492,6 +492,114 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* Transaction Information Panel */}
+      <div className="bg-white border border-[#4EA7F8] rounded-sm shadow-sm overflow-hidden mb-8">
+        <div className="bg-[#3498db] text-white px-4 py-3 flex items-center gap-2 border-b-2 border-[#1A252F]">
+          <Box className="w-4 h-4" />
+          <h3 className="font-bold text-[13px] uppercase tracking-wider">
+            Transaction Information
+          </h3>
+        </div>
+
+        {/* TODAY SECTION */}
+        <div className="border-b border-gray-200">
+          <div className="px-5 py-4">
+            <h4 className="text-red-600 font-bold text-[13px] tracking-wide uppercase">
+              Today:
+            </h4>
+          </div>
+
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#f0f2f5] border-y border-gray-200 text-gray-500 text-[11px] font-bold tracking-wider">
+                <th className="px-5 py-3 w-1/3">MEDIUM</th>
+                <th className="px-5 py-3 w-1/3 text-center">DEPOSITS</th>
+                <th className="px-5 py-3 w-1/3 text-center">WITHDRAWAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assetOrder.map((asset, idx) => {
+                const isEven = idx % 2 === 0;
+                const deposits = txToday[asset.id]?.d || 0;
+                const withdraws = txToday[asset.id]?.w || 0;
+                if (
+                  deposits === 0 &&
+                  withdraws === 0 &&
+                  !["main", "eth", "usdt_erc20"].includes(asset.id)
+                )
+                  return null;
+
+                return (
+                  <tr
+                    key={`today-${asset.id}`}
+                    className={`${
+                      isEven ? "bg-white" : "bg-[#fafafa]"
+                    } border-b border-gray-100 text-gray-600 text-[13px] font-semibold hover:bg-gray-50`}
+                  >
+                    <td className="px-5 py-4">{asset.name}</td>
+                    <td className="px-5 py-4 text-center">
+                      {formatCryptoAmount(deposits, asset.id)}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      {formatCryptoAmount(withdraws, asset.id)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* THIS MONTH SECTION */}
+        <div>
+          <div className="px-5 py-4">
+            <h4 className="text-red-600 font-bold text-[13px] tracking-wide uppercase">
+              This Month:
+            </h4>
+          </div>
+
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#f0f2f5] border-y border-gray-200 text-gray-500 text-[11px] font-bold tracking-wider">
+                <th className="px-5 py-3 w-1/3">MEDIUM</th>
+                <th className="px-5 py-3 w-1/3 text-center">DEPOSITS</th>
+                <th className="px-5 py-3 w-1/3 text-center">WITHDRAWAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assetOrder.map((asset, idx) => {
+                const isEven = idx % 2 === 0;
+                const deposits = txMonth[asset.id]?.d || 0;
+                const withdraws = txMonth[asset.id]?.w || 0;
+                if (
+                  deposits === 0 &&
+                  withdraws === 0 &&
+                  !["main", "eth", "usdt_erc20"].includes(asset.id)
+                )
+                  return null;
+
+                return (
+                  <tr
+                    key={`month-${asset.id}`}
+                    className={`${
+                      isEven ? "bg-white" : "bg-[#fafafa]"
+                    } border-b border-gray-100 text-gray-600 text-[13px] font-semibold hover:bg-gray-50`}
+                  >
+                    <td className="px-5 py-4">{asset.name}</td>
+                    <td className="px-5 py-4 text-center">
+                      {formatCryptoAmount(deposits, asset.id)}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      {formatCryptoAmount(withdraws, asset.id)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Executive Live Visitors, Geo Flags & Section Summary */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-8">
         {/* Command Header */}
@@ -964,114 +1072,6 @@ export default function AdminDashboardPage() {
           >
             <span>Search all users, IPs, countries &amp; IP history →</span>
           </Link>
-        </div>
-      </div>
-
-      {/* Transaction Information Panel */}
-      <div className="bg-white border border-[#4EA7F8] rounded-sm shadow-sm overflow-hidden mb-8">
-        <div className="bg-[#3498db] text-white px-4 py-3 flex items-center gap-2 border-b-2 border-[#1A252F]">
-          <Box className="w-4 h-4" />
-          <h3 className="font-bold text-[13px] uppercase tracking-wider">
-            Transaction Information
-          </h3>
-        </div>
-
-        {/* TODAY SECTION */}
-        <div className="border-b border-gray-200">
-          <div className="px-5 py-4">
-            <h4 className="text-red-600 font-bold text-[13px] tracking-wide uppercase">
-              Today:
-            </h4>
-          </div>
-
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#f0f2f5] border-y border-gray-200 text-gray-500 text-[11px] font-bold tracking-wider">
-                <th className="px-5 py-3 w-1/3">MEDIUM</th>
-                <th className="px-5 py-3 w-1/3 text-center">DEPOSITS</th>
-                <th className="px-5 py-3 w-1/3 text-center">WITHDRAWAL</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assetOrder.map((asset, idx) => {
-                const isEven = idx % 2 === 0;
-                const deposits = txToday[asset.id]?.d || 0;
-                const withdraws = txToday[asset.id]?.w || 0;
-                if (
-                  deposits === 0 &&
-                  withdraws === 0 &&
-                  !["main", "eth", "usdt_erc20"].includes(asset.id)
-                )
-                  return null;
-
-                return (
-                  <tr
-                    key={`today-${asset.id}`}
-                    className={`${
-                      isEven ? "bg-white" : "bg-[#fafafa]"
-                    } border-b border-gray-100 text-gray-600 text-[13px] font-semibold hover:bg-gray-50`}
-                  >
-                    <td className="px-5 py-4">{asset.name}</td>
-                    <td className="px-5 py-4 text-center">
-                      {formatCryptoAmount(deposits, asset.id)}
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      {formatCryptoAmount(withdraws, asset.id)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* THIS MONTH SECTION */}
-        <div>
-          <div className="px-5 py-4">
-            <h4 className="text-red-600 font-bold text-[13px] tracking-wide uppercase">
-              This Month:
-            </h4>
-          </div>
-
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#f0f2f5] border-y border-gray-200 text-gray-500 text-[11px] font-bold tracking-wider">
-                <th className="px-5 py-3 w-1/3">MEDIUM</th>
-                <th className="px-5 py-3 w-1/3 text-center">DEPOSITS</th>
-                <th className="px-5 py-3 w-1/3 text-center">WITHDRAWAL</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assetOrder.map((asset, idx) => {
-                const isEven = idx % 2 === 0;
-                const deposits = txMonth[asset.id]?.d || 0;
-                const withdraws = txMonth[asset.id]?.w || 0;
-                if (
-                  deposits === 0 &&
-                  withdraws === 0 &&
-                  !["main", "eth", "usdt_erc20"].includes(asset.id)
-                )
-                  return null;
-
-                return (
-                  <tr
-                    key={`month-${asset.id}`}
-                    className={`${
-                      isEven ? "bg-white" : "bg-[#fafafa]"
-                    } border-b border-gray-100 text-gray-600 text-[13px] font-semibold hover:bg-gray-50`}
-                  >
-                    <td className="px-5 py-4">{asset.name}</td>
-                    <td className="px-5 py-4 text-center">
-                      {formatCryptoAmount(deposits, asset.id)}
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      {formatCryptoAmount(withdraws, asset.id)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
