@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Toaster, toast } from 'sonner';
+import { adminFetch } from "@/lib/admin-client";
 
 export default function AdminAddFundsPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -37,7 +38,7 @@ export default function AdminAddFundsPage() {
 
     const fetchUsers = async () => {
       try {
-        const res = await fetch('/api/admin/users');
+        const res = await adminFetch('/api/admin/users');
         const data = await res.json();
         if (data.users) setUsers(data.users);
       } catch (err) {
@@ -134,7 +135,7 @@ export default function AdminAddFundsPage() {
         setSelectedUser("");
         
         // Refresh users
-        const usersRes = await fetch('/api/admin/users');
+        const usersRes = await adminFetch('/api/admin/users');
         const usersData = await usersRes.json();
         if (usersData.users) setUsers(usersData.users);
       }
@@ -146,23 +147,25 @@ export default function AdminAddFundsPage() {
   };
   
   const getBalanceDisplay = (u: any, type: string) => {
-    if (type === 'main') return `$${Number(u.wallet_balance || 0).toLocaleString()}`;
-    if (type === 'usdt_erc20') return `${Number(u.usdt_erc20_balance || 0)} USDT`;
-    if (type === 'usdt_trc20') return `${Number(u.usdt_trc20_balance || 0)} USDT`;
-    if (type === 'usdt_bep20') return `${Number(u.usdt_bep20_balance || 0)} USDT`;
-    if (type === 'usdc_solana') return `${Number(u.usdc_solana_balance || 0)} USDC`;
-    if (type === 'usdc_bep20') return `${Number(u.usdc_bep20_balance || 0)} USDC`;
-    if (type === 'btc') return `${Number(u.btc_balance || 0)} BTC`;
-    if (type === 'eth') return `${Number(u.balance || 0)} ETH`;
-    if (type === 'bnb') return `${Number(u.bnb_balance || 0)} BNB`;
-    if (type === 'sol') return `${Number(u.sol_balance || 0)} SOL`;
-    if (type === 'trx') return `${Number(u.trx_balance || 0)} TRX`;
-    if (type === 'matic') return `${Number(u.matic_balance || 0)} MATIC`;
-    if (type === 'avax') return `${Number(u.avax_balance || 0)} AVAX`;
+    const w = u?.wallet || u || {};
+    if (type === 'main') return `$${Number(w.wallet_balance || 0).toLocaleString()}`;
+    if (type === 'usdt_erc20') return `${Number(w.usdt_erc20_balance || 0)} USDT`;
+    if (type === 'usdt_trc20') return `${Number(w.usdt_trc20_balance || 0)} USDT`;
+    if (type === 'usdt_bep20') return `${Number(w.usdt_bep20_balance || 0)} USDT`;
+    if (type === 'usdc_solana') return `${Number(w.usdc_solana_balance || 0)} USDC`;
+    if (type === 'usdc_bep20') return `${Number(w.usdc_bep20_balance || 0)} USDC`;
+    if (type === 'btc') return `${Number(w.btc_balance || 0)} BTC`;
+    if (type === 'eth') return `${Number(w.balance || 0)} ETH`;
+    if (type === 'bnb') return `${Number(w.bnb_balance || 0)} BNB`;
+    if (type === 'sol') return `${Number(w.sol_balance || 0)} SOL`;
+    if (type === 'trx') return `${Number(w.trx_balance || 0)} TRX`;
+    if (type === 'matic') return `${Number(w.matic_balance || 0)} MATIC`;
+    if (type === 'avax') return `${Number(w.avax_balance || 0)} AVAX`;
     return '0';
   };
 
   const formatName = (u: any) => {
+      if (u.full_name) return u.full_name;
       if (u.first_name || u.last_name) return `${u.first_name || ''} ${u.last_name || ''}`.trim();
       return "User";
   };
@@ -387,21 +390,23 @@ export default function AdminAddFundsPage() {
             {/* User List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
               {users.filter(u => {
-                const search = userSearch.toLowerCase();
+                const search = userSearch.trim().toLowerCase();
+                if (!search) return true;
                 const name = formatName(u).toLowerCase();
                 const email = (u.email || '').toLowerCase();
-                const uid = (u.wallet?.readable_id || u.id || '').toLowerCase();
-                
-                // Address searching
+                const uid = (u.wallet?.readable_id || '').toLowerCase();
+                const uuid = (u.id || '').toLowerCase();
+                const w = u.wallet || u;
+
                 const addresses = [
-                  u.address, u.trx_address, u.sol_address, u.btc_address,
-                  u.usdt_erc20_address, u.usdt_trc20_address, u.usdt_bep20_address,
-                  u.usdc_bep20_address, u.usdc_solana_address
+                  w.address, w.trx_address, w.sol_address, w.btc_address,
+                  w.usdt_erc20_address, w.usdt_trc20_address, w.usdt_bep20_address,
+                  w.usdc_bep20_address, w.usdc_solana_address
                 ].filter(Boolean).map(a => String(a).toLowerCase());
-                
+
                 const matchesAddress = addresses.some(a => a.includes(search));
-                
-                return name.includes(search) || email.includes(search) || uid.includes(search) || matchesAddress;
+
+                return name.includes(search) || email.includes(search) || uid.includes(search) || uuid.includes(search) || matchesAddress;
               }).map(u => (
                 <div 
                   key={u.id}
@@ -418,17 +423,23 @@ export default function AdminAddFundsPage() {
                 </div>
               ))}
               {users.length > 0 && users.filter(u => {
-                const search = userSearch.toLowerCase();
+                const search = userSearch.trim().toLowerCase();
+                if (!search) return true;
                 const name = formatName(u).toLowerCase();
                 const email = (u.email || '').toLowerCase();
-                const uid = (u.wallet?.readable_id || u.id || '').toLowerCase();
+                const uid = (u.wallet?.readable_id || '').toLowerCase();
+                const uuid = (u.id || '').toLowerCase();
+                const w = u.wallet || u;
+
                 const addresses = [
-                  u.address, u.trx_address, u.sol_address, u.btc_address,
-                  u.usdt_erc20_address, u.usdt_trc20_address, u.usdt_bep20_address,
-                  u.usdc_bep20_address, u.usdc_solana_address
+                  w.address, w.trx_address, w.sol_address, w.btc_address,
+                  w.usdt_erc20_address, w.usdt_trc20_address, w.usdt_bep20_address,
+                  w.usdc_bep20_address, w.usdc_solana_address
                 ].filter(Boolean).map(a => String(a).toLowerCase());
+
                 const matchesAddress = addresses.some(a => a.includes(search));
-                return name.includes(search) || email.includes(search) || uid.includes(search) || matchesAddress;
+
+                return name.includes(search) || email.includes(search) || uid.includes(search) || uuid.includes(search) || matchesAddress;
               }).length === 0 && (
                 <div className="text-center text-sm text-gray-500 py-8">No users match your search.</div>
               )}

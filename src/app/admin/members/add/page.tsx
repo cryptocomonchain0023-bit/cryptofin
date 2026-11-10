@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { adminFetch } from "@/lib/admin-client";
 import { ArrowLeft, Save, Wallet, Shield, User, Landmark, Building2, Smartphone, AlertTriangle } from "lucide-react";
 
 export default function AddMemberPage() {
@@ -42,7 +43,7 @@ export default function AddMemberPage() {
     if (!profile) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/users`, {
+      const res = await adminFetch(`/api/admin/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
