@@ -405,17 +405,20 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-gray-500 font-semibold">Loading dashboard data...</div>
+      <div className="w-full flex-1 flex items-center justify-center p-12 bg-white text-gray-500 font-semibold">
+        Loading dashboard data...
+      </div>
     );
   }
 
-  const summaryRows =
+  const activeSourceList =
     presenceTab === "active"
-      ? visitorSummary.liveVisitors.slice(0, 8)
-      : visitorSummary.recentLogins.slice(0, 8);
+      ? visitorSummary.liveVisitors
+      : visitorSummary.recentLogins;
+  const summaryRows = activeSourceList.slice(0, 12);
 
   return (
-    <div className="w-full animate-in fade-in duration-300 relative font-sans text-gray-900">
+    <div className="w-full flex-1 flex flex-col animate-in fade-in duration-300 relative font-sans text-gray-900 bg-white">
       {/* Toast Notification */}
       {showToast && (
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 bg-white border border-gray-200 shadow-xl rounded-sm flex items-start gap-3 px-6 py-4 z-50 w-max max-w-full animate-in slide-in-from-top-4">
@@ -438,54 +441,54 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Top Stats Cards */}
-      <div className="flex flex-row mt-16 mb-8 bg-white border border-gray-200 shadow-sm w-full overflow-hidden">
+      <div className="flex flex-row mt-16 mb-8 bg-white border border-gray-200 rounded-lg shadow-sm w-full overflow-hidden shrink-0">
         <div className="flex flex-1 border-r border-gray-200">
-          <div className="w-32 bg-[#00AEEF] flex flex-col items-center justify-center text-white py-5 px-2">
+          <div className="w-32 bg-[#00AEEF] flex flex-col items-center justify-center text-white py-7 px-2 min-h-[126px]">
             <Users className="w-10 h-10 mb-2 text-white fill-current" />
             <span className="font-bold text-sm tracking-wide">Users</span>
             <span className="text-xs">[Total]</span>
           </div>
           <div className="flex-1 flex items-center justify-center bg-white">
-            <span className="text-[26px] font-normal text-gray-700">
+            <span className="text-[28px] font-medium text-gray-800 tracking-tight">
               {stats.totalUsers}
             </span>
           </div>
         </div>
 
         <div className="flex flex-1 border-r border-gray-200">
-          <div className="w-32 bg-[#B8703C] flex flex-col items-center justify-center text-white py-5 px-2">
+          <div className="w-32 bg-[#B8703C] flex flex-col items-center justify-center text-white py-7 px-2 min-h-[126px]">
             <Users className="w-10 h-10 mb-2 text-white fill-current" />
             <span className="font-bold text-sm tracking-wide">Users</span>
             <span className="text-xs">[Active]</span>
           </div>
           <div className="flex-1 flex items-center justify-center bg-white">
-            <span className="text-[26px] font-normal text-gray-700">
+            <span className="text-[28px] font-medium text-gray-800 tracking-tight">
               {stats.activeUsers}
             </span>
           </div>
         </div>
 
         <div className="flex flex-1 border-r border-gray-200">
-          <div className="w-32 bg-[#E94B35] flex flex-col items-center justify-center text-white py-5 px-2">
+          <div className="w-32 bg-[#E94B35] flex flex-col items-center justify-center text-white py-7 px-2 min-h-[126px]">
             <Users className="w-10 h-10 mb-2 text-white fill-current" />
             <span className="font-bold text-sm tracking-wide">Users</span>
             <span className="text-xs">[Blocked]</span>
           </div>
           <div className="flex-1 flex items-center justify-center bg-white">
-            <span className="text-[26px] font-normal text-gray-700">
+            <span className="text-[28px] font-medium text-gray-800 tracking-tight">
               {stats.blockedUsers}
             </span>
           </div>
         </div>
 
         <div className="flex flex-1">
-          <div className="w-32 bg-[#25B89A] flex flex-col items-center justify-center text-white py-5 px-2">
+          <div className="w-32 bg-[#25B89A] flex flex-col items-center justify-center text-white py-7 px-2 min-h-[126px]">
             <Users className="w-10 h-10 mb-2 text-white fill-current" />
             <span className="font-bold text-sm tracking-wide">Users</span>
             <span className="text-xs">[Suspended]</span>
           </div>
           <div className="flex-1 flex items-center justify-center bg-white">
-            <span className="text-[26px] font-normal text-gray-700">
+            <span className="text-[28px] font-medium text-gray-800 tracking-tight">
               {stats.suspendedUsers}
             </span>
           </div>
@@ -493,8 +496,8 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Transaction Information Panel */}
-      <div className="bg-white border border-[#4EA7F8] rounded-sm shadow-sm overflow-hidden mb-8">
-        <div className="bg-[#3498db] text-white px-4 py-3 flex items-center gap-2 border-b-2 border-[#1A252F]">
+      <div className="bg-white border border-[#4EA7F8] rounded-lg shadow-sm overflow-hidden mb-8 shrink-0">
+        <div className="bg-[#3498db] text-white px-5 py-3.5 flex items-center gap-2 border-b-2 border-[#1A252F]">
           <Box className="w-4 h-4" />
           <h3 className="font-bold text-[13px] uppercase tracking-wider">
             Transaction Information
@@ -512,9 +515,9 @@ export default function AdminDashboardPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#f0f2f5] border-y border-gray-200 text-gray-500 text-[11px] font-bold tracking-wider">
-                <th className="px-5 py-3 w-1/3">MEDIUM</th>
-                <th className="px-5 py-3 w-1/3 text-center">DEPOSITS</th>
-                <th className="px-5 py-3 w-1/3 text-center">WITHDRAWAL</th>
+                <th className="px-5 py-3.5 w-1/3">MEDIUM</th>
+                <th className="px-5 py-3.5 w-1/3 text-center">DEPOSITS</th>
+                <th className="px-5 py-3.5 w-1/3 text-center">WITHDRAWAL</th>
               </tr>
             </thead>
             <tbody>
@@ -525,7 +528,7 @@ export default function AdminDashboardPage() {
                 if (
                   deposits === 0 &&
                   withdraws === 0 &&
-                  !["main", "eth", "usdt_erc20"].includes(asset.id)
+                  !["btc", "eth", "usdt_erc20", "usdt_trc20"].includes(asset.id)
                 )
                   return null;
 
@@ -536,11 +539,11 @@ export default function AdminDashboardPage() {
                       isEven ? "bg-white" : "bg-[#fafafa]"
                     } border-b border-gray-100 text-gray-600 text-[13px] font-semibold hover:bg-gray-50`}
                   >
-                    <td className="px-5 py-4">{asset.name}</td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-5 py-[18px]">{asset.name}</td>
+                    <td className="px-5 py-[18px] text-center">
                       {formatCryptoAmount(deposits, asset.id)}
                     </td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-5 py-[18px] text-center">
                       {formatCryptoAmount(withdraws, asset.id)}
                     </td>
                   </tr>
@@ -561,9 +564,9 @@ export default function AdminDashboardPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#f0f2f5] border-y border-gray-200 text-gray-500 text-[11px] font-bold tracking-wider">
-                <th className="px-5 py-3 w-1/3">MEDIUM</th>
-                <th className="px-5 py-3 w-1/3 text-center">DEPOSITS</th>
-                <th className="px-5 py-3 w-1/3 text-center">WITHDRAWAL</th>
+                <th className="px-5 py-3.5 w-1/3">MEDIUM</th>
+                <th className="px-5 py-3.5 w-1/3 text-center">DEPOSITS</th>
+                <th className="px-5 py-3.5 w-1/3 text-center">WITHDRAWAL</th>
               </tr>
             </thead>
             <tbody>
@@ -574,7 +577,7 @@ export default function AdminDashboardPage() {
                 if (
                   deposits === 0 &&
                   withdraws === 0 &&
-                  !["main", "eth", "usdt_erc20"].includes(asset.id)
+                  !["btc", "eth", "usdt_erc20", "usdt_trc20"].includes(asset.id)
                 )
                   return null;
 
@@ -585,11 +588,11 @@ export default function AdminDashboardPage() {
                       isEven ? "bg-white" : "bg-[#fafafa]"
                     } border-b border-gray-100 text-gray-600 text-[13px] font-semibold hover:bg-gray-50`}
                   >
-                    <td className="px-5 py-4">{asset.name}</td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-5 py-[18px]">{asset.name}</td>
+                    <td className="px-5 py-[18px] text-center">
                       {formatCryptoAmount(deposits, asset.id)}
                     </td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-5 py-[18px] text-center">
                       {formatCryptoAmount(withdraws, asset.id)}
                     </td>
                   </tr>
@@ -601,9 +604,9 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Executive Live Visitors, Geo Flags & Section Summary */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-8">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex-1 flex flex-col mb-2">
         {/* Command Header */}
-        <div className="bg-slate-900 text-white px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-slate-900 text-white px-6 py-5 flex flex-wrap items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center">
               <Wifi className="w-4 h-4 text-emerald-400" />
@@ -673,7 +676,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Metrics Strip + Live Country Flags */}
-        <div className="px-5 py-4 bg-slate-50 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="px-6 py-5 bg-slate-50 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shrink-0">
           <div className="flex flex-wrap items-center gap-6">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
@@ -746,7 +749,7 @@ export default function AdminDashboardPage() {
                 Waiting for active sessions
               </span>
             ) : (
-              visitorSummary.activeCountries.slice(0, 6).map((c) => (
+              visitorSummary.activeCountries.slice(0, 8).map((c) => (
                 <Link
                   key={c.name}
                   href={`/admin/ip-config?country=${encodeURIComponent(c.code || c.name)}`}
@@ -775,7 +778,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Summary View Tabs */}
-        <div className="px-5 py-2.5 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
+        <div className="px-6 py-3 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -811,54 +814,27 @@ export default function AdminDashboardPage() {
           </div>
 
           <span className="text-[11px] text-gray-500 font-medium">
-            Showing top {Math.min(8, summaryRows.length)} summary entries
+            Showing {summaryRows.length} of {activeSourceList.length}{" "}
+            {presenceTab === "active" ? "active" : "recent"} entries
           </span>
         </div>
 
         {/* Summary Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto flex-1 flex flex-col bg-white">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#f8fafc] border-b border-gray-200 text-gray-500 text-[11px] font-bold uppercase tracking-wider">
-                <th className="px-5 py-3">User</th>
-                <th className="px-5 py-3">Presence &amp; Device</th>
-                <th className="px-5 py-3">Current Section</th>
-                <th className="px-5 py-3">Country Flag &amp; City</th>
-                <th className="px-5 py-3">IP Address</th>
-                <th className="px-5 py-3 text-right">Inspect</th>
+                <th className="px-6 py-3.5">User</th>
+                <th className="px-6 py-3.5">Presence &amp; Device</th>
+                <th className="px-6 py-3.5">Current Section</th>
+                <th className="px-6 py-3.5">Country Flag &amp; City</th>
+                <th className="px-6 py-3.5">IP Address</th>
+                <th className="px-6 py-3.5 text-right">Inspect</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-xs">
-              {summaryRows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center">
-                    <div className="flex flex-col items-center justify-center max-w-md mx-auto">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2.5">
-                        <Activity className="w-5 h-5" />
-                      </div>
-                      <p className="text-sm font-bold text-gray-800">
-                        {presenceTab === "active"
-                          ? "No users are actively on the site at this exact moment"
-                          : "No recent login records found"}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Users appear here automatically in real time as soon as they sign in or navigate any wallet page.
-                      </p>
-                      {presenceTab === "active" &&
-                        visitorSummary.recentLogins.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setPresenceTab("recent")}
-                            className="mt-3 px-3.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 transition"
-                          >
-                            View {visitorSummary.recentLogins.length} Recent Login Sessions →
-                          </button>
-                        )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                summaryRows.map((u) => {
+            {summaryRows.length > 0 && (
+              <tbody className="divide-y divide-gray-100 text-xs">
+                {summaryRows.map((u) => {
                   const sectionInfo = u.current_path
                     ? resolveSiteSection(u.current_path)
                     : null;
@@ -879,7 +855,7 @@ export default function AdminDashboardPage() {
                       className="hover:bg-slate-50/90 transition-colors"
                     >
                       {/* User */}
-                      <td className="px-5 py-3.5 min-w-[200px]">
+                      <td className="px-6 py-[18px] min-w-[200px]">
                         <div className="flex items-center gap-3">
                           {u.avatar_url ? (
                             <img
@@ -914,7 +890,7 @@ export default function AdminDashboardPage() {
                       </td>
 
                       {/* Presence & Device */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-6 py-[18px] whitespace-nowrap">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
                             {u.presence === "online" ? (
@@ -955,7 +931,7 @@ export default function AdminDashboardPage() {
                       </td>
 
                       {/* Current Site Section */}
-                      <td className="px-5 py-3.5 min-w-[180px]">
+                      <td className="px-6 py-[18px] min-w-[180px]">
                         {sectionLabel ? (
                           <div className="space-y-0.5">
                             <span
@@ -978,7 +954,7 @@ export default function AdminDashboardPage() {
                       </td>
 
                       {/* Country Flag & City */}
-                      <td className="px-5 py-3.5 min-w-[170px]">
+                      <td className="px-6 py-[18px] min-w-[170px]">
                         {flagCountryName || flagCode ? (
                           <div className="space-y-1">
                             <div className="flex items-center gap-1.5">
@@ -1010,7 +986,7 @@ export default function AdminDashboardPage() {
                       </td>
 
                       {/* IP Address */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-6 py-[18px] whitespace-nowrap">
                         {u.last_ip ? (
                           <div className="space-y-0.5">
                             <button
@@ -1043,7 +1019,7 @@ export default function AdminDashboardPage() {
                       </td>
 
                       {/* Quick Action */}
-                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <td className="px-6 py-[18px] text-right whitespace-nowrap">
                         <Link
                           href={`/admin/members/${u.id}`}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white hover:border-blue-300 hover:text-blue-600 text-gray-700 text-[11px] font-bold transition"
@@ -1054,14 +1030,44 @@ export default function AdminDashboardPage() {
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
+                })}
+              </tbody>
+            )}
           </table>
+
+          {summaryRows.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-16 text-center bg-white">
+              <div className="flex flex-col items-center justify-center max-w-md mx-auto">
+                <div className="w-11 h-11 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <p className="text-sm font-bold text-gray-800">
+                  {presenceTab === "active"
+                    ? "No users are actively on the site at this exact moment"
+                    : "No recent login records found"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+                  Users appear here automatically in real time as soon as they sign in or navigate any wallet page.
+                </p>
+                {presenceTab === "active" &&
+                  visitorSummary.recentLogins.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPresenceTab("recent")}
+                      className="mt-4 px-4 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 transition"
+                    >
+                      View {visitorSummary.recentLogins.length} Recent Login Sessions →
+                    </button>
+                  )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 min-h-[24px] bg-white" />
+          )}
         </div>
 
         {/* Summary Footer */}
-        <div className="px-5 py-3 bg-[#f8fafc] border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="mt-auto px-6 py-4 bg-[#f8fafc] border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
           <span className="text-gray-500 font-medium">
             Summary view shows live active presence &amp; recent logins ({visitorSummary.ipLoggedCount} of{" "}
             {Math.max(0, stats.totalUsers - 1)} users have captured IP telemetry).

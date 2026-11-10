@@ -55,7 +55,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     checkAdmin();
   }, [router]);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlBg = html.style.backgroundColor;
+    const prevBodyBg = body.style.backgroundColor;
+    const prevBodyColor = body.style.color;
+    const prevBodyPaddingBottom = body.style.paddingBottom;
+
+    html.style.backgroundColor = "#ffffff";
+    body.style.backgroundColor = "#ffffff";
+    body.style.color = "#111827";
+    body.style.paddingBottom = "0px";
+
+    return () => {
+      html.style.backgroundColor = prevHtmlBg;
+      body.style.backgroundColor = prevBodyBg;
+      body.style.color = prevBodyColor;
+      body.style.paddingBottom = prevBodyPaddingBottom;
+    };
+  }, []);
+
   const [openMenus, setOpenMenus] = useState<string[]>(['Manage Members']);
+
+  const adminGlobalCss = `
+    html, body {
+      background-color: #ffffff !important;
+      color: #111827 !important;
+      padding-bottom: 0 !important;
+    }
+    /* Hide Smartsupp globally within Admin routes */
+    #smartsupp-widget-container, 
+    .smartsupp-widget, 
+    iframe[title*="Smartsupp"],
+    iframe[name^="smartsupp"],
+    div[id^="smartsupp"] {
+      display: none !important;
+    }
+  `;
 
   const navItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -78,24 +115,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Settings", href: "/admin/profile", icon: Settings },
   ];
 
-  if (loading) return <div className="h-screen w-full bg-[#f4f6f9] flex items-center justify-center">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] w-full bg-white text-gray-600 flex items-center justify-center font-medium">
+        <style>{adminGlobalCss}</style>
+        Loading...
+      </div>
+    );
+  }
 
   const toggleMenu = (name: string) => {
     setOpenMenus(prev => prev.includes(name) ? prev.filter(m => m !== name) : [...prev, name]);
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f4f6f9] font-sans min-w-[980px]">
-      <style>{`
-        /* Hide Smartsupp globally within Admin routes */
-        #smartsupp-widget-container, 
-        .smartsupp-widget, 
-        iframe[title*="Smartsupp"],
-        iframe[name^="smartsupp"],
-        div[id^="smartsupp"] {
-          display: none !important;
-        }
-      `}</style>
+    <div className="flex min-h-[100dvh] w-full bg-white font-sans min-w-[980px] text-gray-900">
+      <style>{adminGlobalCss}</style>
       
       {/* Sidebar - strict desktop */}
       {sidebarOpen && (
@@ -159,7 +194,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-h-[100dvh] min-w-0 overflow-x-hidden bg-white">
         
         {/* Top Header */}
         <header className="h-[55px] bg-[#424242] flex items-center justify-between px-6 shadow-md shrink-0 border-b border-gray-600">
@@ -199,12 +234,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 flex flex-col p-4 relative min-w-0 max-w-full">
-          <div className="w-full min-w-0">
+        <main className="flex-1 flex flex-col p-5 relative min-w-0 max-w-full bg-white">
+          <div className="w-full min-w-0 flex-1 flex flex-col">
             {children}
           </div>
           
-          <div className="mt-auto pt-8 text-center text-[11px] text-blue-500 mb-2 font-semibold">
+          <div className="mt-auto pt-6 pb-2 text-center text-[11px] text-blue-500 font-semibold shrink-0">
             Copyright © 2026 All rights reserved
           </div>
         </main>

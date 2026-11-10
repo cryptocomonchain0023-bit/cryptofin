@@ -90,7 +90,8 @@ export async function GET(request: Request) {
         .select('user_id, status, document_type, country, created_at, updated_at'),
       supabaseAdmin
         .from('transactions')
-        .select('user_id, to_address, from_address, tx_hash'),
+        .select('user_id, to_address, from_address, tx_hash')
+        .limit(5000),
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }).catch(() => null),
     ]);
 
@@ -108,9 +109,33 @@ export async function GET(request: Request) {
     }
 
     const walletMap = new Map<string, Record<string, any>>();
+    const allWalletAddressesMap = new Map<string, Set<string>>();
+    const walletOnlyUsers = new Set<string>();
+
     for (const w of (wallets as unknown as Record<string, any>[]) || []) {
-      if (w?.user_id && (!walletMap.has(w.user_id) || w.is_primary)) {
+      if (!w?.user_id) continue;
+      if (!walletMap.has(w.user_id) || w.is_primary) {
         walletMap.set(w.user_id, w);
+      }
+      walletOnlyUsers.add(w.user_id);
+      if (!allWalletAddressesMap.has(w.user_id)) {
+        allWalletAddressesMap.set(w.user_id, new Set<string>());
+      }
+      const addrSet = allWalletAddressesMap.get(w.user_id)!;
+      for (const candidate of [
+        w.address,
+        w.btc_address,
+        w.sol_address,
+        w.trx_address,
+        w.usdt_erc20_address,
+        w.usdt_bep20_address,
+        w.usdc_bep20_address,
+        w.usdt_trc20_address,
+        w.usdc_solana_address,
+      ]) {
+        if (typeof candidate === 'string' && candidate.trim()) {
+          addrSet.add(candidate.trim());
+        }
       }
     }
 
@@ -144,6 +169,9 @@ export async function GET(request: Request) {
     const authMetaMap = new Map<
       string,
       {
+        email: string | null;
+        created_at: string | null;
+        user_metadata: Record<string, any>;
         email_confirmed: boolean;
         last_sign_in_at: string | null;
         account_status: AccountStatus;
@@ -156,6 +184,9 @@ export async function GET(request: Request) {
     for (const au of authUsers) {
       const telemetry = parseTelemetryFromAuthUser(au);
       authMetaMap.set(au.id, {
+        email: au.email || null,
+        created_at: au.created_at || null,
+        user_metadata: (au.user_metadata as Record<string, any>) || {},
         email_confirmed: Boolean(au.email_confirmed_at),
         last_sign_in_at: au.last_sign_in_at || null,
         account_status: normalizeAccountStatus(au),
@@ -164,42 +195,28 @@ export async function GET(request: Request) {
       });
     }
 
-    const users = (profiles || []).map((p) => {
+    const buildUserEntry = (p: Record<string, any>) => {
       const wallet = walletMap.get(p.id) || null;
       const kyc = kycMap.get(p.id);
       const authMeta = authMetaMap.get(p.id);
-      const ownAddresses = new Set(
-        wallet
-          ? [
-              wallet.address,
-              wallet.btc_address,
-              wallet.sol_address,
-              wallet.trx_address,
-              wallet.usdt_erc20_address,
-              wallet.usdt_bep20_address,
-              wallet.usdc_bep20_address,
-              wallet.usdt_trc20_address,
-              wallet.usdc_solana_address,
-            ]
-              .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
-              .map((v) => v.trim().toLowerCase())
-          : []
-      );
+      const walletAddrs = Array.from(allWalletAddressesMap.get(p.id) || []);
+      const ownAddresses = new Set(walletAddrs.map((v) => v.toLowerCase()));
 
       const rawTxRefs = txRefsMap.get(p.id);
       const tx_refs = rawTxRefs
         ? Array.from(rawTxRefs).filter((ref) => !ownAddresses.has(ref.toLowerCase()))
         : [];
 
+      const resolvedEmail = p.email || authMeta?.email || wallet?.email || null;
       const displayName =
         (p.full_name || '').trim() ||
         [p.first_name, p.last_name].filter(Boolean).join(' ').trim() ||
         (p.username || '').trim() ||
-        (p.email ? p.email.split('@')[0] : 'User');
+        (resolvedEmail ? String(resolvedEmail).split('@')[0] : 'User');
 
       return {
         id: p.id,
-        email: p.email || null,
+        email: resolvedEmail,
         full_name: p.full_name || null,
         first_name: p.first_name || null,
         last_name: p.last_name || null,
@@ -212,7 +229,7 @@ export async function GET(request: Request) {
         pin_attempts: Number(p.pin_attempts || 0),
         is_pin_locked: Boolean(p.is_pin_locked),
         has_pin: Boolean(p.pin_hash || p.transaction_pin),
-        created_at: p.created_at,
+        created_at: p.created_at || authMeta?.created_at || wallet?.created_at || null,
         updated_at: p.updated_at || null,
         email_confirmed: authMeta ? authMeta.email_confirmed : true,
         last_sign_in_at: authMeta?.last_sign_in_at || null,
@@ -225,8 +242,47 @@ export async function GET(request: Request) {
         kyc_status: kyc?.status || 'unverified',
         tx_count: txCountMap.get(p.id) || 0,
         tx_refs,
+        wallet_addresses: walletAddrs,
         wallet,
       };
+    };
+
+    const seenIds = new Set<string>();
+    const users = (profiles || []).map((p) => {
+      seenIds.add(p.id);
+      return buildUserEntry(p);
+    });
+
+    // Hydrate any auth user or wallet holder that lacks a profiles row (e.g., older/admin wallets)
+    for (const userId of new Set([...authMetaMap.keys(), ...walletOnlyUsers])) {
+      if (seenIds.has(userId)) continue;
+      seenIds.add(userId);
+      const authMeta = authMetaMap.get(userId);
+      const wallet = walletMap.get(userId);
+      if (!wallet && !authMeta) continue;
+      const meta = authMeta?.user_metadata || {};
+      users.push(
+        buildUserEntry({
+          id: userId,
+          email: authMeta?.email || wallet?.email || null,
+          full_name: meta.full_name || null,
+          first_name: meta.first_name || null,
+          last_name: meta.last_name || null,
+          username: meta.username || null,
+          avatar_url: meta.avatar_url || null,
+          phone: meta.phone || null,
+          country: meta.country || null,
+          account_type:
+            authMeta?.email?.toLowerCase() === 'admin@cryptofin.org' ? 'admin' : 'user',
+          created_at: authMeta?.created_at || wallet?.created_at || null,
+        })
+      );
+    }
+
+    users.sort((a, b) => {
+      const tsA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const tsB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return tsB - tsA;
     });
 
     return NextResponse.json({ users });
