@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push("/login");
+        router.push("/auth/login");
         return;
       }
       
@@ -189,7 +189,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button 
               onClick={async () => {
                 await supabase.auth.signOut();
-                router.push('/login');
+                router.push('/auth/login');
               }}
               className="hover:text-red-400 transition-colors ml-1"
             >

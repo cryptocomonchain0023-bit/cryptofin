@@ -1,7 +1,5 @@
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { verifyAdminRequest } from '@/lib/admin-auth';
 
 function resolveWalletColumn(
   currency?: string | null,
@@ -40,35 +38,15 @@ function resolveWalletColumn(
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const supabaseAuth = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
-    );
-
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser();
+    const { user, isAdmin, supabaseAdmin, authError } =
+      await verifyAdminRequest(request);
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: `Unauthorized: ${authError || 'Please sign in again.'}` },
+        { status: 401 }
+      );
     }
-
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
-
-    const { data: callerProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    const isAdmin =
-      user.email?.toLowerCase() === 'admin@cryptofin.org' ||
-      callerProfile?.is_admin === true;
 
     if (!isAdmin) {
       return NextResponse.json(
@@ -120,7 +98,6 @@ export async function POST(request: Request) {
 
     let direction: 'deduct' | 'refund' | 'none' = 'none';
     if (!isWithdrawal) {
-      // Deposit / credit: only deduct if it had already been credited
       if (
         (status === 'completed' || status === 'approved' || status === 'success') &&
         absAmount > 0
@@ -128,7 +105,6 @@ export async function POST(request: Request) {
         direction = 'deduct';
       }
     } else {
-      // Withdrawal / debit: refund if DB balance was deducted (amount < 0) and not already rejected/failed
       if (
         rawAmount < 0 &&
         absAmount > 0 &&
@@ -140,7 +116,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // If a SmartSend withdrawal stored a deducted ETH gas fee in metadata.fee, restore it too
     let ethFeeRefund = 0;
     if (direction === 'refund' && typeof meta?.fee === 'string') {
       const feeMatch = meta.fee.trim().match(/^([\d.]+)\s+ETH$/i);
@@ -201,7 +176,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Delete transaction atomically first so concurrent requests cannot double-adjust balance
     const { data: deletedTx, error: deleteErr } = await supabaseAdmin
       .from('transactions')
       .delete()
@@ -241,7 +215,6 @@ export async function POST(request: Request) {
         .eq('user_id', tx.user_id);
 
       if (updateWalletErr) {
-        // Restore deleted transaction row if wallet update fails
         await supabaseAdmin.from('transactions').insert(deletedTx);
         throw new Error(`Failed to update wallet balance: ${updateWalletErr.message}`);
       }

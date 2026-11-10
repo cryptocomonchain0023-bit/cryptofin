@@ -3,12 +3,33 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Copy, CheckCircle2, XCircle, Clock, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 import { AssetIcon } from "@/components/dashboard/AssetIcon";
 import {
   CancelTransactionModal,
   type AdminTransactionItem,
 } from "@/components/admin/CancelTransactionModal";
+
+const getFreshAccessToken = async (): Promise<string | null> => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const needsRefresh =
+    !session?.access_token ||
+    (typeof session.expires_at === "number" && session.expires_at - nowSec < 60);
+
+  if (!needsRefresh && session?.access_token) {
+    return session.access_token;
+  }
+
+  const { data: refreshed } = await supabase.auth.refreshSession();
+  return refreshed.session?.access_token ?? session?.access_token ?? null;
+};
 
 const formatNetwork = (currency: string) => {
   if (!currency) return { token: "Unknown", network: "Unknown" };
@@ -53,10 +74,34 @@ const getDisplayName = (profile: AdminTransactionItem["profiles"]) => {
 };
 
 export default function AdminDepositsPage() {
+  const router = useRouter();
   const [transfers, setTransfers] = useState<AdminTransactionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelTarget, setCancelTarget] = useState<AdminTransactionItem | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const postWithAdminAuth = async (url: string, payload: Record<string, unknown>) => {
+    const token = await getFreshAccessToken();
+    const doFetch = (accessToken: string | null) =>
+      fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+    let res = await doFetch(token);
+    if (res.status === 401) {
+      const { data: refreshed } = await createClient().auth.refreshSession();
+      if (refreshed.session?.access_token) {
+        res = await doFetch(refreshed.session.access_token);
+      }
+    }
+    return res;
+  };
 
   const fetchTransfers = async () => {
     try {
@@ -85,12 +130,20 @@ export default function AdminDepositsPage() {
     if (!confirm(`Are you sure you want to ${newStatus} this deposit?`)) return;
 
     try {
-      const res = await fetch("/api/admin/transactions/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ txId, newStatus, userId, amount, currency, type: "deposit" }),
+      const res = await postWithAdminAuth("/api/admin/transactions/update", {
+        txId,
+        newStatus,
+        userId,
+        amount,
+        currency,
+        type: "deposit",
       });
       const data = await res.json();
+      if (res.status === 401) {
+        toast.error("Admin session expired. Please sign in again.");
+        router.push("/auth/login");
+        return;
+      }
       if (!res.ok) throw new Error(data.error);
 
       toast.success(`Deposit ${newStatus} successfully.`);
@@ -105,12 +158,16 @@ export default function AdminDepositsPage() {
     if (!cancelTarget) return;
     setCancellingId(cancelTarget.id);
     try {
-      const res = await fetch("/api/admin/transactions/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ txId: cancelTarget.id }),
+      const res = await postWithAdminAuth("/api/admin/transactions/cancel", {
+        txId: cancelTarget.id,
       });
       const data = await res.json();
+      if (res.status === 401) {
+        setCancelTarget(null);
+        toast.error("Admin session expired. Please sign in again.");
+        router.push("/auth/login");
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "Failed to cancel deposit");
 
       setTransfers((prev) => prev.filter((item) => item.id !== cancelTarget.id));
