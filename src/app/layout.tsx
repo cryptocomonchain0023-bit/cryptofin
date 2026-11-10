@@ -6,6 +6,7 @@ import { SecurityProvider } from '@/context/SecurityContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { LiveChat } from '@/components/LiveChat';
 import { GoogleTranslateFix } from '@/components/GoogleTranslateFix';
+import { ActivityTracker } from '@/components/ActivityTracker';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" }); 
@@ -65,6 +66,7 @@ export default function RootLayout({
         className={`${inter.variable} ${outfit.variable} antialiased bg-[#050505] text-white pb-safe`}
       >
         <GoogleTranslateFix />
+        <ActivityTracker />
         <ThemeProvider>
           <Toaster position="top-center" richColors closeButton />
           <SecurityProvider>

@@ -11,6 +11,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { toast } from 'sonner';
 import { detectRealUserLocation } from '@/lib/geo';
 import { EditProfileModal } from '@/components/profile/EditProfileModal';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
@@ -21,6 +22,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [detectedCountry, setDetectedCountry] = useState<string>('');
+  const [detectedCountryCode, setDetectedCountryCode] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +56,10 @@ export default function SettingsPage() {
           .maybeSingle();
 
         let currentCountry = prof?.country?.trim();
+        const telemetryGeoCode = (user?.app_metadata?.telemetry?.countryCode as string | undefined) || null;
+        if (telemetryGeoCode) {
+          setDetectedCountryCode(telemetryGeoCode);
+        }
 
         // 4. If profile.country is empty, auto-detect real location
         if (!currentCountry) {
@@ -61,6 +67,7 @@ export default function SettingsPage() {
           if (loc.country && loc.country !== 'International') {
             currentCountry = loc.country;
             setDetectedCountry(loc.country);
+            if (loc.countryCode) setDetectedCountryCode(loc.countryCode);
             // Save real detected country to Supabase so it persists
             await supabase.from('profiles').update({ country: loc.country }).eq('id', user.id);
           }
@@ -206,7 +213,21 @@ export default function SettingsPage() {
              <SettingRow 
                icon={Globe} 
                label="Language & Region" 
-               subLabel={`${profile?.country || detectedCountry || "Auto-detecting"} • English (US)`}
+               subLabel={
+                 <span className="inline-flex items-center gap-1.5 flex-wrap">
+                   {(profile?.country || detectedCountry) ? (
+                     <CountryFlag
+                       countryCode={detectedCountryCode}
+                       countryName={profile?.country || detectedCountry}
+                       size="xs"
+                       textClassName="text-xs text-zinc-500"
+                     />
+                   ) : (
+                     <span>Auto-detecting</span>
+                   )}
+                   <span>• English (US)</span>
+                 </span>
+               }
                action={() => setShowEdit(true)} 
              />
           </div>

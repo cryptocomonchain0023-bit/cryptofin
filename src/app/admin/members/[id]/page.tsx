@@ -42,6 +42,8 @@ import {
   truncateAddress,
 } from "@/lib/admin-tokens";
 import { AssetIcon } from "@/components/dashboard/AssetIcon";
+import { CountryFlag } from "@/components/ui/CountryFlag";
+import { formatRelativeTime, type PresenceState, type UserTelemetry } from "@/lib/activity";
 import {
   CancelTransactionModal,
   type AdminTransactionItem,
@@ -78,6 +80,10 @@ interface AdminUserDetail {
   updated_at: string | null;
   last_sign_in_at: string | null;
   email_confirmed: boolean;
+  account_status?: "active" | "suspended" | "blocked";
+  presence?: PresenceState;
+  telemetry?: UserTelemetry | null;
+  country_code?: string | null;
   kyc_status: string;
   kyc: KycDetail | null;
 }
@@ -783,12 +789,35 @@ export default function ManageSingleUserPage() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500 truncate">
-              {serverUser.email || "No email"} · Est. Portfolio{" "}
-              <span className="font-bold text-gray-800">
-                {formatUsd(portfolioStats.totalUsd)}
+            <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
+              <span className="truncate">{serverUser.email || "No email"}</span>
+              <span>·</span>
+              <span>
+                Est. Portfolio{" "}
+                <span className="font-bold text-gray-800">
+                  {formatUsd(portfolioStats.totalUsd)}
+                </span>
               </span>
-            </p>
+              {(serverUser.telemetry?.countryName ||
+                serverUser.telemetry?.countryCode ||
+                serverUser.country ||
+                serverUser.country_code) && (
+                <>
+                  <span>·</span>
+                  <CountryFlag
+                    countryCode={
+                      serverUser.telemetry?.countryCode || serverUser.country_code
+                    }
+                    countryName={
+                      serverUser.telemetry?.countryName || serverUser.country
+                    }
+                    city={serverUser.telemetry?.city}
+                    size="sm"
+                    textClassName="text-xs font-semibold text-gray-700"
+                  />
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -981,6 +1010,125 @@ export default function ManageSingleUserPage() {
                     Seed Phrase:{" "}
                     {serverUser.has_recovery_phrase ? "Encrypted / Hidden" : "None"}
                   </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Live IP, Geo Location & Session Telemetry Strip */}
+            <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      serverUser.presence === "online"
+                        ? "bg-emerald-500 animate-pulse"
+                        : serverUser.presence === "idle"
+                        ? "bg-amber-400"
+                        : "bg-gray-400"
+                    }`}
+                  />
+                  <span>Live Visitor &amp; IP Session Telemetry</span>
+                </div>
+                <Link
+                  href="/admin/ip-config"
+                  className="text-[11px] font-bold text-blue-600 hover:underline inline-flex items-center gap-1"
+                >
+                  Open IP &amp; Security Console <ExternalLink size={11} />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div className="bg-white rounded-lg border border-slate-200 p-2.5">
+                  <div className="text-[10px] font-bold uppercase text-slate-400 mb-1">
+                    Current Status &amp; Section
+                  </div>
+                  <div className="font-bold text-slate-900">
+                    {serverUser.presence === "online"
+                      ? "Online Now"
+                      : serverUser.presence === "idle"
+                      ? "Idle (Recent)"
+                      : "Offline"}
+                    {serverUser.telemetry?.lastActiveAt
+                      ? ` · ${formatRelativeTime(serverUser.telemetry.lastActiveAt)}`
+                      : ""}
+                  </div>
+                  <div className="text-[11px] text-blue-700 font-semibold mt-0.5 truncate">
+                    {serverUser.telemetry?.currentSection || "No section logged yet"}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg border border-slate-200 p-2.5">
+                  <div className="text-[10px] font-bold uppercase text-slate-400 mb-1">
+                    Last Known IP Address
+                  </div>
+                  {serverUser.telemetry?.ip || serverUser.telemetry?.loginIp ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono font-bold text-blue-700 truncate">
+                        {serverUser.telemetry.ip || serverUser.telemetry.loginIp}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopy(
+                            serverUser.telemetry!.ip || serverUser.telemetry!.loginIp,
+                            "IP Address"
+                          )
+                        }
+                        className="p-1 rounded bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 shrink-0"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic">Awaiting next login</span>
+                  )}
+                  {serverUser.telemetry?.device && (
+                    <div className="text-[10px] text-slate-500 mt-0.5 truncate">
+                      {serverUser.telemetry.device}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg border border-slate-200 p-2.5">
+                  <div className="text-[10px] font-bold uppercase text-slate-400 mb-1">
+                    Country &amp; City
+                  </div>
+                  <CountryFlag
+                    countryCode={
+                      serverUser.telemetry?.countryCode || serverUser.country_code
+                    }
+                    countryName={
+                      serverUser.telemetry?.countryName || serverUser.country
+                    }
+                    city={serverUser.telemetry?.city}
+                    size="md"
+                    showCode
+                    fallbackLabel="Not captured yet"
+                    textClassName="font-bold text-slate-800 text-xs"
+                  />
+                </div>
+
+                <div className="bg-white rounded-lg border border-slate-200 p-2.5">
+                  <div className="text-[10px] font-bold uppercase text-slate-400 mb-1">
+                    Access &amp; IP History
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                        serverUser.account_status === "blocked"
+                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          : serverUser.account_status === "suspended"
+                          ? "bg-amber-50 text-amber-800 border-amber-200"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      }`}
+                    >
+                      {serverUser.account_status || "active"}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-600">
+                      {serverUser.telemetry?.ipHistory?.length || 0} IP event
+                      {(serverUser.telemetry?.ipHistory?.length || 0) === 1 ? "" : "s"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

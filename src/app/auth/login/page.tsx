@@ -33,12 +33,47 @@ export default function LoginPage() {
       });
 
       if (error) throw error;
-      
-      if (formData.email.toLowerCase() === 'admin@cryptofin.org') {
+
+      const isAdminAccount = formData.email.toLowerCase() === 'admin@cryptofin.org';
+      const accountStatus = String(data.user?.app_metadata?.account_status || 'active').toLowerCase();
+
+      if (!isAdminAccount && (accountStatus === 'blocked' || accountStatus === 'suspended')) {
+        await supabase.auth.signOut();
+        throw new Error(
+          accountStatus === 'blocked'
+            ? 'Your account has been restricted. Please contact support.'
+            : 'Your account is currently suspended. Please contact support.'
+        );
+      }
+
+      if (isAdminAccount) {
         router.push('/admin');
         return;
       }
-      
+
+      if (data.session?.access_token) {
+        try {
+          const trackPromise = fetch('/api/activity/track', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${data.session.access_token}`,
+            },
+            body: JSON.stringify({
+              path: '/dashboard',
+              eventType: 'login',
+            }),
+          });
+          await Promise.race([
+            trackPromise,
+            new Promise((resolve) => setTimeout(resolve, 900)),
+          ]);
+        } catch {
+          // Non-blocking login telemetry
+        }
+      }
+
       router.push('/dashboard');
     } catch (err: any) {
       toast.error(err.message || 'Login failed');

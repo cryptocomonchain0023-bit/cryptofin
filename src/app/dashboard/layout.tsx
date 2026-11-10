@@ -37,6 +37,16 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         router.push('/auth/login');
         return;
       }
+
+      const accountStatus = String(user.app_metadata?.account_status || 'active').toLowerCase();
+      if (
+        user.email?.toLowerCase() !== 'admin@cryptofin.org' &&
+        (accountStatus === 'blocked' || accountStatus === 'suspended')
+      ) {
+        await supabase.auth.signOut();
+        router.push('/auth/login');
+        return;
+      }
       
       setLoading(false);
     };

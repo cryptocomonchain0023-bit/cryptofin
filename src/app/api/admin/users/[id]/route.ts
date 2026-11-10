@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { EDITABLE_WALLET_BALANCE_COLUMNS } from '@/lib/admin-tokens';
+import { computePresence, findCountryCodeByName } from '@/lib/activity';
+import {
+  normalizeAccountStatus,
+  parseTelemetryFromAuthUser,
+} from '@/lib/telemetry-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -200,6 +205,10 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    const telemetry = parseTelemetryFromAuthUser(authUser);
+    const presence = computePresence(telemetry);
+    const accountStatus = normalizeAccountStatus(authUser);
+
     const rawWallet = walletRow as Record<string, any> | null;
     const hasRecoveryPhrase = Boolean(
       profile?.recovery_phrase || rawWallet?.encrypted_phrase || rawWallet?.seed_phrase
@@ -232,6 +241,12 @@ export async function GET(
       updated_at: profile?.updated_at || null,
       last_sign_in_at: authUser?.last_sign_in_at || null,
       email_confirmed: Boolean(authUser?.email_confirmed_at),
+      account_status: accountStatus,
+      presence,
+      telemetry,
+      country_code:
+        telemetry?.countryCode ||
+        (profile?.country ? findCountryCodeByName(profile.country) : null),
       kyc_status: kycRow?.status || 'unverified',
       kyc: kycRow || null,
       profile_exists: Boolean(profile),

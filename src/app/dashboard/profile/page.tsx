@@ -9,6 +9,7 @@ import { EditProfileModal } from '@/components/profile/EditProfileModal';
 import { useTheme } from '@/context/ThemeContext';
 import { toast } from 'sonner';
 import { detectRealUserLocation } from '@/lib/geo';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 
 export default function ProfilePage() {
   const { theme } = useTheme();
@@ -18,6 +19,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [detectedCountryCode, setDetectedCountryCode] = useState<string | null>(null);
   
   const supabase = createClient();
 
@@ -34,10 +36,16 @@ export default function ProfilePage() {
         .eq('id', user.id)
         .maybeSingle();
 
+      const telemetryGeoCode = (user?.app_metadata?.telemetry?.countryCode as string | undefined) || null;
+      if (telemetryGeoCode) {
+        setDetectedCountryCode(telemetryGeoCode);
+      }
+
       let finalProfile = profileData;
       if (!profileData?.country?.trim()) {
         const loc = await detectRealUserLocation();
         if (loc.country && loc.country !== 'International') {
+          if (loc.countryCode) setDetectedCountryCode(loc.countryCode);
           finalProfile = { ...(profileData || {}), country: loc.country };
           // Auto-save real country to profile
           await supabase.from('profiles').update({ country: loc.country }).eq('id', user.id);
@@ -204,7 +212,16 @@ export default function ProfilePage() {
          <DetailRow 
             icon={Globe} 
             label="Region" 
-            value={profile?.country} 
+            value={
+              profile?.country ? (
+                <CountryFlag
+                  countryCode={detectedCountryCode}
+                  countryName={profile.country}
+                  size="sm"
+                  textClassName={isDark ? 'text-white' : 'text-slate-900'}
+                />
+              ) : null
+            } 
             placeholder="Auto-detecting..."
             theme={theme}
             isDark={isDark}
@@ -242,9 +259,9 @@ function DetailRow({ icon: Icon, label, value, isVerified = false, placeholder, 
             </div>
             <div>
                <p className="text-xs text-zinc-500 font-medium">{label}</p>
-               <p className={`text-sm font-semibold mt-0.5 ${!value ? 'text-zinc-500 italic' : (isDark ? 'text-white' : 'text-slate-900')}`}>
+               <div className={`text-sm font-semibold mt-0.5 ${!value ? 'text-zinc-500 italic' : (isDark ? 'text-white' : 'text-slate-900')}`}>
                   {value || placeholder}
-               </p>
+               </div>
             </div>
          </div>
 

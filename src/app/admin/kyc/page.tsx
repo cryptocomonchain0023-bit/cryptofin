@@ -20,6 +20,7 @@ import {
   Globe
 } from "lucide-react";
 import { toast } from "sonner";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 interface KycRequest {
   id: string;
@@ -452,9 +453,8 @@ export default function AdminKycPage() {
                               {req.document_type || 'ID Card'}
                             </span>
                             {req.country && req.country !== 'N/A' && (
-                              <span className="inline-flex items-center gap-1 text-[11px] text-gray-600 font-medium bg-blue-50/70 border border-blue-100 px-1.5 py-0.5 rounded">
-                                <Globe size={10} className="text-blue-500" />
-                                {req.country}
+                              <span className="inline-flex items-center gap-1 text-[11px] text-gray-700 font-semibold bg-blue-50/70 border border-blue-100 px-2 py-0.5 rounded">
+                                <CountryFlag countryName={req.country} size="xs" textClassName="text-[11px] font-semibold text-gray-700" />
                               </span>
                             )}
                           </div>

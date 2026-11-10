@@ -32,6 +32,8 @@ import {
   truncateAddress,
 } from "@/lib/admin-tokens";
 import { AssetIcon } from "@/components/dashboard/AssetIcon";
+import { CountryFlag } from "@/components/ui/CountryFlag";
+import type { PresenceState, UserTelemetry } from "@/lib/activity";
 
 interface AdminUserWallet {
   id: string;
@@ -71,6 +73,10 @@ interface AdminUserRow {
   created_at: string;
   email_confirmed: boolean;
   last_sign_in_at: string | null;
+  account_status?: "active" | "suspended" | "blocked";
+  presence?: PresenceState;
+  telemetry?: UserTelemetry | null;
+  country_code?: string | null;
   kyc_status: string;
   tx_count: number;
   tx_refs?: string[];
@@ -151,6 +157,12 @@ function getMatchInfo(user: AdminUserRow, rawQuery: string): MatchInfo | null {
   }
   if (user.country && user.country.toLowerCase().includes(q)) {
     return { field: "Country" };
+  }
+  if (user.telemetry?.ip && user.telemetry.ip.toLowerCase().includes(q)) {
+    return { field: "IP Address", matchedValue: user.telemetry.ip };
+  }
+  if (user.telemetry?.countryName && user.telemetry.countryName.toLowerCase().includes(q)) {
+    return { field: "Geo Country" };
   }
   if (user.tx_refs?.length) {
     const refMatch = user.tx_refs.find((ref) => ref.toLowerCase().includes(q));
@@ -694,10 +706,18 @@ export default function AdminMembersPage() {
                                   </button>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400 font-medium">
-                                {u.country && <span>{u.country}</span>}
-                                {u.country && <span>•</span>}
-                                <span>
+                              <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-gray-500 font-medium">
+                                {(u.telemetry?.countryName || u.telemetry?.countryCode || u.country || u.country_code) && (
+                                  <CountryFlag
+                                    countryCode={u.telemetry?.countryCode || u.country_code}
+                                    countryName={u.telemetry?.countryName || u.country}
+                                    city={u.telemetry?.city}
+                                    size="xs"
+                                    textClassName="text-[10px] font-semibold text-gray-600"
+                                  />
+                                )}
+                                {(u.telemetry?.countryName || u.country) && <span>•</span>}
+                                <span className="text-gray-400">
                                   Joined{" "}
                                   {u.created_at
                                     ? new Date(u.created_at).toLocaleDateString("en-US", {
@@ -877,14 +897,32 @@ export default function AdminMembersPage() {
                               </span>
                             )}
 
-                            <div className="flex items-center gap-2 text-[11px] text-gray-500 font-semibold">
+                            <div className="flex items-center gap-2 text-[11px] text-gray-500 font-semibold flex-wrap">
                               <span>{u.tx_count} tx</span>
+                              {u.presence === "online" && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  Online
+                                </span>
+                              )}
                               {u.is_pin_locked && (
                                 <span className="inline-flex items-center gap-0.5 text-rose-600 font-bold">
                                   <Lock size={10} /> PIN Locked
                                 </span>
                               )}
                             </div>
+
+                            {u.telemetry?.ip && (
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(u.telemetry!.ip!, "IP Address")}
+                                className="inline-flex items-center gap-1 text-[10px] font-mono text-blue-600 hover:underline"
+                                title="Click to copy last IP"
+                              >
+                                <span>IP: {u.telemetry.ip}</span>
+                                <Copy size={9} />
+                              </button>
+                            )}
                           </div>
                         </td>
 

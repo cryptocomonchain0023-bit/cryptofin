@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { recordUserActivityTelemetry } from '@/lib/telemetry-server';
 
 export async function POST(request: Request) {
   try {
@@ -19,6 +20,21 @@ export async function POST(request: Request) {
         }
       }
     );
+
+    const recordInitialGeo = async (uid: string) => {
+      try {
+        await recordUserActivityTelemetry({
+          supabaseAdmin,
+          userId: uid,
+          headers: request.headers,
+          path: '/auth/verify-email',
+          eventType: 'signup',
+          forcePersist: true,
+        });
+      } catch (geoErr) {
+        console.warn('Signup telemetry warning:', geoErr);
+      }
+    };
 
     // 2. Check if user already exists
     const { data: existingUser } = await supabaseAdmin
@@ -91,6 +107,7 @@ export async function POST(request: Request) {
               last_name: lastName || null,
               phone: phone || null
             });
+            await recordInitialGeo(retryData.user.id);
             return NextResponse.json({ success: true, userId: retryData.user.id });
           }
         }
@@ -111,6 +128,8 @@ export async function POST(request: Request) {
       last_name: lastName || null,
       phone: phone || null
     });
+
+    await recordInitialGeo(userId);
 
     return NextResponse.json({ success: true, userId });
 

@@ -1,6 +1,12 @@
+import { findCountryCodeByName, normalizeCountryCode } from '@/lib/activity';
+
 // Geolocation & Real-time Location Detection Utility
 
-let cachedLocation: { country: string | null; countryCode: string | null; city: string | null } | null = null;
+let cachedLocation: {
+  country: string | null;
+  countryCode: string | null;
+  city: string | null;
+} | null = null;
 
 // Timezone fallback mapping for instant offline / client-only fallback
 const TIMEZONE_COUNTRY_MAP: Record<string, string> = {
@@ -79,25 +85,27 @@ export async function detectRealUserLocation(): Promise<{
     return {
       country: cachedLocation.country,
       countryCode: cachedLocation.countryCode,
-      city: cachedLocation.city
+      city: cachedLocation.city,
     };
   }
 
   // 1. Try server-side IP headers via /api/geo
   try {
-    const res = await fetch('/api/geo');
+    const res = await fetch('/api/geo', { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       if (data.country) {
+        const resolvedCode =
+          normalizeCountryCode(data.countryCode) || findCountryCodeByName(data.country);
         cachedLocation = {
           country: data.country,
-          countryCode: data.countryCode || null,
-          city: data.city || null
+          countryCode: resolvedCode,
+          city: data.city || null,
         };
         return {
           country: data.country,
-          countryCode: data.countryCode || null,
-          city: data.city || null
+          countryCode: resolvedCode,
+          city: data.city || null,
         };
       }
     }
@@ -110,16 +118,18 @@ export async function detectRealUserLocation(): Promise<{
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (tz && TIMEZONE_COUNTRY_MAP[tz]) {
       const detected = TIMEZONE_COUNTRY_MAP[tz];
-      cachedLocation = { country: detected, countryCode: null, city: null };
-      return { country: detected, countryCode: null, city: null };
+      const detectedCode = findCountryCodeByName(detected);
+      cachedLocation = { country: detected, countryCode: detectedCode, city: null };
+      return { country: detected, countryCode: detectedCode, city: null };
     }
 
     // Try extracting continent or city from timezone name
     if (tz && tz.includes('/')) {
       const parts = tz.split('/');
       const cityOrRegion = parts[parts.length - 1].replace(/_/g, ' ');
-      cachedLocation = { country: cityOrRegion, countryCode: null, city: null };
-      return { country: cityOrRegion, countryCode: null, city: null };
+      const maybeCode = findCountryCodeByName(cityOrRegion);
+      cachedLocation = { country: cityOrRegion, countryCode: maybeCode, city: null };
+      return { country: cityOrRegion, countryCode: maybeCode, city: null };
     }
   } catch {
     // Ignore

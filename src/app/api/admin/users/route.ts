@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
+import { computePresence, findCountryCodeByName, type UserTelemetry } from '@/lib/activity';
+import {
+  normalizeAccountStatus,
+  parseTelemetryFromAuthUser,
+  type AccountStatus,
+} from '@/lib/telemetry-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,13 +143,24 @@ export async function GET(request: Request) {
 
     const authMetaMap = new Map<
       string,
-      { email_confirmed: boolean; last_sign_in_at: string | null }
+      {
+        email_confirmed: boolean;
+        last_sign_in_at: string | null;
+        account_status: AccountStatus;
+        telemetry: UserTelemetry | null;
+        presence: 'online' | 'idle' | 'offline';
+      }
     >();
     const authUsers = authUsersRes?.data?.users || [];
+    const nowMs = Date.now();
     for (const au of authUsers) {
+      const telemetry = parseTelemetryFromAuthUser(au);
       authMetaMap.set(au.id, {
         email_confirmed: Boolean(au.email_confirmed_at),
         last_sign_in_at: au.last_sign_in_at || null,
+        account_status: normalizeAccountStatus(au),
+        telemetry,
+        presence: computePresence(telemetry, nowMs),
       });
     }
 
@@ -199,6 +216,12 @@ export async function GET(request: Request) {
         updated_at: p.updated_at || null,
         email_confirmed: authMeta ? authMeta.email_confirmed : true,
         last_sign_in_at: authMeta?.last_sign_in_at || null,
+        account_status: authMeta?.account_status || 'active',
+        presence: authMeta?.presence || 'offline',
+        telemetry: authMeta?.telemetry || null,
+        country_code:
+          authMeta?.telemetry?.countryCode ||
+          (p.country ? findCountryCodeByName(p.country) : null),
         kyc_status: kyc?.status || 'unverified',
         tx_count: txCountMap.get(p.id) || 0,
         tx_refs,
