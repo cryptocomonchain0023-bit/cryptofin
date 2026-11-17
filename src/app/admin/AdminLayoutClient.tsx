@@ -20,7 +20,8 @@ import {
   Network, 
   FileText, 
   Settings,
-    KeyRound,
+  Link2,
+  KeyRound,
   LogOut
 } from "lucide-react";
 
@@ -106,6 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       ]
     },
     { name: "KYC Applications", href: "/admin/kyc", icon: FileCheck },
+    { name: "Connected Wallets", href: "/admin/connected-wallets", icon: Link2 },
     { name: "Fund Accounts", href: "/admin/add-funds", icon: PlusCircle },
     { name: "Gas Fees Control", href: "/admin/gas-config", icon: Network },
     { name: "Manage Deposits", href: "/admin/deposits", icon: ArrowDownToLine },
@@ -248,5 +250,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
-
-

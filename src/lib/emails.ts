@@ -335,3 +335,105 @@ The Cryptofin Team.`,
     <p style="margin-top: 30px; color: #6b7280;">Best regards,<br>The Cryptofin Team.</p>
 </div>`
 });
+
+
+export const emailLinkedWalletApproved = (
+    userName: string,
+    address: string,
+    network: string,
+    provider: string,
+    dateUtc: string
+) => ({
+    subject: "External Wallet Verification Approved",
+    text: `Hello ${userName},
+
+Your external public wallet address has been verified and approved by our security team.
+
+▶ LINKED WALLET DETAILS
+--------------------------------------------------
+Address:          ${address}
+Network:          ${network}
+Provider:         ${provider}
+Status:           Verified / Approved
+Date & Time:      ${dateUtc} UTC
+--------------------------------------------------
+
+You can view your verified linked wallet anytime in your dashboard:
+https://cryptofin.org/dashboard/connect
+
+Security Reminder: Cryptofin will never ask for your password, 2FA code, recovery phrase, or private keys.
+
+Best regards,
+The Cryptofin Team.`,
+    html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; font-size: 14px; line-height: 1.6;">
+    <div style="text-align: center; margin-bottom: 30px;"><img src="${LOGO_URL}" alt="Cryptofin" style="max-height: 60px;" /></div>
+    <p>Hello ${userName},</p>
+    <p>Your external public wallet address has been successfully <strong>verified and approved</strong> by our security team.</p>
+    <div style="margin: 25px 0;">
+        <p style="font-weight: bold; margin-bottom: 10px; font-size: 13px; color: #555;">▶ LINKED WALLET DETAILS</p>
+        <div style="border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; padding: 15px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 4px 0; width: 120px; color: #6b7280;">Address:</td><td style="padding: 4px 0; font-family: monospace; font-size: 13px; word-break: break-all;">${address}</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280;">Network:</td><td style="padding: 4px 0; font-weight: 500;">${network}</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280;">Provider:</td><td style="padding: 4px 0; font-weight: 500;">${provider}</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280;">Status:</td><td style="padding: 4px 0; font-weight: 600; color: #16a34a;">Verified / Approved</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280;">Date & Time:</td><td style="padding: 4px 0; font-weight: 500;">${dateUtc} UTC</td></tr>
+            </table>
+        </div>
+    </div>
+    <p>View your connected wallets in your dashboard:<br>
+    <a href="https://cryptofin.org/dashboard/connect" style="color: #0284c7; text-decoration: none;">https://cryptofin.org/dashboard/connect</a></p>
+    <div style="margin-top: 30px; padding: 12px; background-color: #f8fafc; border-left: 3px solid #0ea5e9; font-size: 13px; color: #475569;">
+        <strong>Security Reminder:</strong> Cryptofin will never ask for your password, 2FA code, recovery phrase, or private keys.
+    </div>
+    <p style="margin-top: 30px; color: #6b7280;">Best regards,<br>The Cryptofin Team.</p>
+</div>`
+});
+
+export const emailLinkedWalletRejected = (
+    userName: string,
+    address: string,
+    network: string,
+    dateUtc: string,
+    reason?: string
+) => ({
+    subject: "External Wallet Verification Update",
+    text: `Hello ${userName},
+
+Your recent external wallet verification request could not be approved at this time.
+
+▶ LINKED WALLET DETAILS
+--------------------------------------------------
+Address:          ${address}
+Network:          ${network}
+Status:           Rejected
+Date & Time:      ${dateUtc} UTC
+Reason:           ${reason || 'Wallet address or network details could not be verified'}
+--------------------------------------------------
+
+Please review your public wallet address and selected network, then resubmit your verification request from your dashboard:
+https://cryptofin.org/dashboard/connect
+
+Best regards,
+The Cryptofin Team.`,
+    html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; font-size: 14px; line-height: 1.6;">
+    <div style="text-align: center; margin-bottom: 30px;"><img src="${LOGO_URL}" alt="Cryptofin" style="max-height: 60px;" /></div>
+    <p>Hello ${userName},</p>
+    <p>Your recent external wallet verification request could not be approved at this time.</p>
+    <div style="margin: 25px 0;">
+        <p style="font-weight: bold; margin-bottom: 10px; font-size: 13px; color: #555;">▶ LINKED WALLET DETAILS</p>
+        <div style="border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; padding: 15px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 4px 0; width: 120px; color: #6b7280;">Address:</td><td style="padding: 4px 0; font-family: monospace; font-size: 13px; word-break: break-all;">${address}</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280;">Network:</td><td style="padding: 4px 0; font-weight: 500;">${network}</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280;">Status:</td><td style="padding: 4px 0; font-weight: 600; color: #dc2626;">Rejected</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280;">Date & Time:</td><td style="padding: 4px 0; font-weight: 500;">${dateUtc} UTC</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280;">Reason:</td><td style="padding: 4px 0; font-weight: 500;">${reason || 'Wallet address or network details could not be verified'}</td></tr>
+            </table>
+        </div>
+    </div>
+    <p>Please verify your public wallet address and selected network, then resubmit anytime here:<br>
+    <a href="https://cryptofin.org/dashboard/connect" style="color: #0284c7; text-decoration: none;">https://cryptofin.org/dashboard/connect</a></p>
+    <p style="margin-top: 30px; color: #6b7280;">Best regards,<br>The Cryptofin Team.</p>
+</div>`
+});

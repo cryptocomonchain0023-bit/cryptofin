@@ -1,8 +1,14 @@
 "use client";
-import React, { useState } from 'react';
-import { X, Shield, Key, FileText, Eye, EyeOff, Loader2, Lock, Smartphone, Search } from 'lucide-react';
-import { toast } from 'sonner';
-import { AssetIcon } from '../dashboard/AssetIcon';
+
+import React, { useState } from "react";
+import { X, ShieldCheck, Loader2, Link2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import {
+  SUPPORTED_WALLET_NETWORKS,
+  SUPPORTED_WALLET_PROVIDERS,
+  detectNetworkFromAddress,
+  validatePublicWalletAddress,
+} from "@/lib/linked-wallets";
 
 interface ConnectWalletModalProps {
   onClose: () => void;
@@ -10,147 +16,181 @@ interface ConnectWalletModalProps {
 }
 
 export function ConnectWalletModal({ onClose, onSuccess }: ConnectWalletModalProps) {
-  const [importType, setImportType] = useState<'phrase' | 'privateKey'>('phrase');
-  
-  const [inputValue, setInputValue] = useState('');
-  const [showText, setShowText] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
+  const [address, setAddress] = useState("");
+  const [network, setNetwork] = useState<string>(SUPPORTED_WALLET_NETWORKS[0]);
+  const [walletProvider, setWalletProvider] = useState<string>(SUPPORTED_WALLET_PROVIDERS[0]);
   const [loading, setLoading] = useState(false);
 
-  const handleImport = async () => {
-    if (!inputValue) return;
-    setLoading(true);
+  const handleAddressChange = (val: string) => {
+    setAddress(val);
+    const detected = detectNetworkFromAddress(val);
+    if (detected) setNetwork(detected);
+  };
 
+  const handleAutoFill = async () => {
+    const eth = (window as unknown as { ethereum?: { request: (args: { method: string }) => Promise<string[]> } }).ethereum;
+    if (!eth) {
+      toast.error("No browser wallet found. Enter your public address manually.");
+      return;
+    }
     try {
-      const res = await fetch('/api/wallet/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: importType, value: inputValue }),
+      const accounts = await eth.request({ method: "eth_requestAccounts" });
+      if (accounts?.[0]) {
+        handleAddressChange(accounts[0]);
+        setNetwork("Ethereum (ERC20)");
+        toast.success("Public address detected!");
+      }
+    } catch {
+      toast.error("Wallet detection cancelled.");
+    }
+  };
+
+  const handleLink = async () => {
+    const validation = validatePublicWalletAddress(address, network);
+    if (!validation.valid) {
+      toast.error(validation.error || "Enter a valid public wallet address");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/wallet/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: validation.normalized,
+          network,
+          walletProvider,
+          label: "Verify External Wallet Ownership",
+        }),
       });
 
       const data = await res.json();
-
-      if (data.success) {
-        toast.success("Wallet connected securely!");
-        onSuccess(); 
+      if (res.ok && data.success) {
+        toast.success("Public wallet address submitted for verification!");
+        onSuccess();
         onClose();
-        window.location.reload(); 
       } else {
-        toast.error(data.error || "Connection Failed");
+        toast.error(data.error || "Failed to link wallet");
       }
-    } catch (e) {
-      toast.error("Connection Error");
+    } catch {
+      toast.error("Connection error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] bg-[#050505]/95 backdrop-blur-2xl flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-950/80 backdrop-blur-xl border border-white/5 w-full max-w-[420px] rounded-[32px] p-6 relative shadow-[0_0_80px_rgba(0, 98, 229,0.1)] animate-in zoom-in-95 duration-200 overflow-hidden"
+        className="bg-zinc-950/90 backdrop-blur-xl border border-white/10 w-full max-w-[440px] rounded-[28px] p-6 relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden"
       >
-        {/* Glow Accent */}
         <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
-        
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/5 rounded-full text-zinc-400 hover:bg-white/10 hover:text-white transition-all z-50 active:scale-95">
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 bg-white/5 rounded-full text-zinc-400 hover:bg-white/10 hover:text-white transition-all z-50"
+        >
           <X size={16} strokeWidth={2.5} />
         </button>
 
-        <div className="mb-6 mt-2 relative z-10">
-          <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-            Connect
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse relative">
-                <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-50"></div>
-            </div>
+        <div className="mb-5 mt-1 relative z-10">
+          <h2 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
+            <Link2 size={20} className="text-primary" />
+            Link Public Wallet
           </h2>
-          <p className="text-zinc-500 text-sm mt-1">
-            Choose how you want to connect your assets securely.
+          <p className="text-zinc-400 text-xs mt-1">
+            Submit your public address and network for verification.
           </p>
         </div>
 
-        <div className="relative z-10 transition-all duration-300 h-auto min-h-[380px]">
-           <div className="animate-in fade-in h-full flex flex-col justify-between gap-4">
-              <div className="flex gap-2">
-                <button onClick={() => setImportType('phrase')} className={`flex-1 py-3 text-[11px] uppercase tracking-wider font-bold rounded-xl border transition-colors ${importType === 'phrase' ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-transparent border-white/10 text-zinc-500 hover:bg-white/5'}`}>Seed Phrase</button>
-                <button onClick={() => setImportType('privateKey')} className={`flex-1 py-3 text-[11px] uppercase tracking-wider font-bold rounded-xl border transition-colors ${importType === 'privateKey' ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-transparent border-white/10 text-zinc-500 hover:bg-white/5'}`}>Private Key</button>
-              </div>
+        <div className="relative z-10 space-y-4">
+          <button
+            type="button"
+            onClick={handleAutoFill}
+            className="w-full py-2.5 px-3 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 text-blue-400 text-xs font-bold flex items-center justify-center gap-2 transition"
+          >
+            <Sparkles size={14} />
+            Auto-Fill from Browser Wallet
+          </button>
 
-              {/* SECURE INPUT FIELD */}
-              <div className="relative group flex flex-col">
-                <div className="relative flex">
-                  <textarea
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
-                    className={`w-full h-full min-h-[110px] bg-black border rounded-2xl p-4 text-sm focus:border-primary/50 outline-none transition-all resize-none shadow-inner ${
-                      showText ? 'text-zinc-300 font-mono tracking-wide' : 'text-transparent font-sans bg-clip-text' // Hide text color if masked
-                    } ${isFocused ? 'border-primary/30 shadow-[0_0_15px_rgba(0, 98, 229,0.1)]' : 'border-white/5'}`}
-                    placeholder={importType === 'phrase' ? "Enter 12 or 24 word phrase separated by spaces..." : "Enter raw private key (e.g. 0x...)"}
-                    style={{
-                      textShadow: showText ? 'none' : '0 0 10px rgba(0, 98, 229,0.5)',
-                      caretColor: '#0062E5'
-                    }}
-                    spellCheck={false}
-                  />
+          <div>
+            <label className="text-[11px] uppercase tracking-wider font-bold text-zinc-400 block mb-1.5">
+              Public Wallet Address
+            </label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => handleAddressChange(e.target.value)}
+              placeholder="0x..., T..., bc1..., or Solana address"
+              spellCheck={false}
+              className="w-full bg-black border border-white/10 rounded-xl px-3.5 py-3 text-xs font-mono text-zinc-200 outline-none focus:border-primary/60"
+            />
+          </div>
 
-                  {/* SHOULDER SURFING BLUR SHIELD */}
-                  {!isFocused && !inputValue && (
-                    <div className="absolute inset-x-0 inset-y-0 m-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center rounded-2xl cursor-text pointer-events-none border border-dashed border-zinc-800">
-                      <Lock size={20} className="text-zinc-600 mb-2" />
-                      <span className="text-zinc-400 text-xs font-bold w-2/3 text-center">Click to input securely. Your screen is protected.</span>
-                    </div>
-                  )}
-
-                  {/* TOGGLE VISIBILITY */}
-                  <button 
-                    type="button"
-                    onClick={() => setShowText(!showText)}
-                    className="absolute bottom-3 right-3 p-2 bg-black border border-white/10 rounded-lg text-zinc-500 hover:text-white transition-colors z-10"
-                  >
-                    {showText ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-                
-                {/* Security Warning Information Block */}
-                <div className="mt-4 flex flex-col gap-2 bg-zinc-900/50 border border-white/5 p-4 rounded-xl">
-                  <div className="flex items-start gap-2.5">
-                    <Shield size={14} className="text-primary mt-0.5 shrink-0" />
-                    <p className="text-[11px] leading-tight text-zinc-400">
-                      <strong className="text-zinc-300">End-to-End Encrypted.</strong> Your data is locally encrypted using AES-256 before leaving your browser.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <FileText size={14} className="text-rose-400 mt-0.5 shrink-0" />
-                    <p className="text-[11px] leading-tight text-zinc-400">
-                      <strong className="text-zinc-300">Never share your keys.</strong> Cryptofin support will never ask for your private key or seed phrase in chat.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <Search size={14} className="text-blue-400 mt-0.5 shrink-0" />
-                    <p className="text-[11px] leading-tight text-zinc-400">
-                      <strong className="text-zinc-300">Verify your connection.</strong> Always ensure you are connecting via the official and secure Cryptofin domain.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* ACTIONS */}
-              <button 
-                onClick={handleImport}
-                disabled={loading || !inputValue}
-                className="w-full mt-2 bg-primary text-black font-extrabold py-4 rounded-xl hover:bg-primary-hover hover:shadow-[0_0_20px_rgba(0, 98, 229,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none bg-gradient-to-r from-primary to-primary-hover"
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] uppercase tracking-wider font-bold text-zinc-400 block mb-1.5">
+                Network
+              </label>
+              <select
+                value={network}
+                onChange={(e) => setNetwork(e.target.value)}
+                className="w-full bg-black border border-white/10 rounded-xl px-3 py-2.5 text-xs text-zinc-200 outline-none focus:border-primary/60"
               >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : (
-                   <>Establish Secure Connection <Lock size={16} className="fill-black/20" /></>
-                )}
-              </button>
-           </div>
+                {SUPPORTED_WALLET_NETWORKS.map((net) => (
+                  <option key={net} value={net} className="bg-zinc-950">
+                    {net}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-wider font-bold text-zinc-400 block mb-1.5">
+                Provider
+              </label>
+              <select
+                value={walletProvider}
+                onChange={(e) => setWalletProvider(e.target.value)}
+                className="w-full bg-black border border-white/10 rounded-xl px-3 py-2.5 text-xs text-zinc-200 outline-none focus:border-primary/60"
+              >
+                {SUPPORTED_WALLET_PROVIDERS.map((prov) => (
+                  <option key={prov} value={prov} className="bg-zinc-950">
+                    {prov}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-xl">
+            <ShieldCheck size={15} className="text-emerald-400 mt-0.5 shrink-0" />
+            <p className="text-[11px] leading-relaxed text-zinc-300">
+              <strong className="text-emerald-300">Public Address Only.</strong> Cryptofin will
+              never ask for your seed phrase or private key.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLink}
+            disabled={loading || !address.trim()}
+            className="w-full bg-primary text-black font-extrabold py-3.5 rounded-xl hover:opacity-95 transition flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <>
+                <Link2 size={16} />
+                Submit for Verification
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
