@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const rawLabel = String(body?.label ?? body?.reason ?? '').trim();
 
     const resolvedNetwork =
-      rawNetwork || detectNetworkFromAddress(rawAddress) || 'Ethereum (ERC20)';
+      rawNetwork || detectNetworkFromAddress(rawAddress) || 'External Wallet';
 
     const validation = validatePublicWalletAddress(rawAddress, resolvedNetwork);
     if (!validation.valid) {
@@ -87,12 +87,11 @@ export async function POST(req: Request) {
     const authUser = userRes.user;
     const existingList = parseLinkedWalletsFromAuthUser(authUser);
 
-    // Prevent duplicate pending submission for exact same address + network
+    // Prevent duplicate pending submission for exact same address
     const alreadyPending = existingList.find(
       (item) =>
         item.status === 'pending' &&
-        item.address.toLowerCase() === validation.normalized.toLowerCase() &&
-        item.network.toLowerCase() === resolvedNetwork.toLowerCase()
+        item.address.toLowerCase() === validation.normalized.toLowerCase()
     );
 
     if (alreadyPending) {

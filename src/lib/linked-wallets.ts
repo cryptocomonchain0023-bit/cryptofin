@@ -43,111 +43,76 @@ export const SUPPORTED_WALLET_PROVIDERS = [
 ] as const;
 
 export const LINK_WALLET_REASONS = [
-  'Verify External Wallet Ownership',
-  'Whitelist Withdrawal Destination',
+  'Get Access To This Wallet',
   'Transfer Assets Into This Wallet',
-  'Withdraw Assets To This Wallet',
-  'Link External Portfolio',
+  'Withdraw Assets From This Wallet',
+  'Verify External Wallet Ownership',
 ] as const;
 
 export function detectNetworkFromAddress(address: string): string | null {
   const trimmed = address.trim();
   if (!trimmed) return null;
-  if (/^0x[a-fA-F0-9]{40}$/.test(trimmed)) return 'Ethereum (ERC20)';
+  if (/^0x[a-fA-F0-9]{40}$/.test(trimmed)) return 'Ethereum / EVM';
   if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(trimmed)) return 'Tron (TRC20)';
   if (/^(bc1[a-zA-HJ-NP-Z0-9]{25,62}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(trimmed)) {
     return 'Bitcoin (BTC)';
   }
+  if (/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(trimmed)) return 'Ripple (XRP)';
+  if (/^(ltc1[a-zA-HJ-NP-Z0-9]{25,62}|[LM3][a-km-zA-HJ-NP-Z1-9]{26,33})$/.test(trimmed)) {
+    return 'Litecoin (LTC)';
+  }
+  if (/^addr1[a-z0-9]{50,110}$/.test(trimmed)) return 'Cardano (ADA)';
+  if (/^(EQ|UQ)[A-Za-z0-9_-]{46}$/.test(trimmed)) return 'TON';
   if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed)) return 'Solana (SOL)';
   return null;
 }
 
 export function validatePublicWalletAddress(
   address: string,
-  network?: string | null
+  _network?: string | null
 ): { valid: boolean; normalized: string; error?: string } {
   const trimmed = address.trim();
 
   if (!trimmed) {
-    return { valid: false, normalized: '', error: 'Please enter a public wallet address.' };
+    return { valid: false, normalized: '', error: 'Please enter a wallet address.' };
   }
 
-  // Explicitly reject multi-word inputs or obvious private key lengths
+  // Reject multi-word inputs (e.g., recovery phrases)
   if (/\s/.test(trimmed)) {
     return {
       valid: false,
       normalized: '',
-      error: 'Please enter a valid public wallet address only (no spaces or recovery phrases).',
+      error: 'Please enter a public wallet address only (no spaces or phrases).',
     };
   }
 
+  // Reject raw 64-hex private keys
   if (/^(0x)?[a-fA-F0-9]{64}$/.test(trimmed)) {
     return {
       valid: false,
       normalized: '',
-      error: 'That looks like a 64-character hex secret. Please enter your public wallet address instead.',
+      error: 'Please enter your public wallet address, not a private key.',
     };
   }
 
-  const net = (network || '').toLowerCase();
-  const isEvm = /^0x[a-fA-F0-9]{40}$/.test(trimmed);
-  const isTron = /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(trimmed);
-  const isBtc = /^(bc1[a-zA-HJ-NP-Z0-9]{25,62}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(trimmed);
-  const isSol = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed);
-
-  if (net.includes('eth') || net.includes('bnb') || net.includes('bep') || net.includes('polygon') || net.includes('matic') || net.includes('avax') || net.includes('avalanche')) {
-    if (!isEvm) {
-      return {
-        valid: false,
-        normalized: trimmed,
-        error: 'EVM network addresses must start with 0x and be 42 characters long.',
-      };
-    }
-    return { valid: true, normalized: trimmed };
+  // Allow any valid public blockchain address format (EVM, BTC, TRX, SOL, XRP, LTC, ADA, TON, Cosmos, Polkadot, etc.)
+  if (trimmed.length < 20 || trimmed.length > 128) {
+    return {
+      valid: false,
+      normalized: trimmed,
+      error: 'Please enter a valid public wallet address (20-128 characters).',
+    };
   }
 
-  if (net.includes('tron') || net.includes('trc')) {
-    if (!isTron) {
-      return {
-        valid: false,
-        normalized: trimmed,
-        error: 'Tron (TRC20) addresses must start with "T" and be 34 characters long.',
-      };
-    }
-    return { valid: true, normalized: trimmed };
+  if (!/^[a-zA-Z0-9:_-]+$/.test(trimmed)) {
+    return {
+      valid: false,
+      normalized: trimmed,
+      error: 'Wallet address contains invalid characters.',
+    };
   }
 
-  if (net.includes('btc') || net.includes('bitcoin')) {
-    if (!isBtc) {
-      return {
-        valid: false,
-        normalized: trimmed,
-        error: 'Please enter a valid Bitcoin address (starting with bc1, 1, or 3).',
-      };
-    }
-    return { valid: true, normalized: trimmed };
-  }
-
-  if (net.includes('sol')) {
-    if (!isSol || isTron) {
-      return {
-        valid: false,
-        normalized: trimmed,
-        error: 'Please enter a valid Solana Base58 public address (32–44 characters).',
-      };
-    }
-    return { valid: true, normalized: trimmed };
-  }
-
-  if (isEvm || isTron || isBtc || isSol) {
-    return { valid: true, normalized: trimmed };
-  }
-
-  return {
-    valid: false,
-    normalized: trimmed,
-    error: 'Unrecognized wallet address format. Please double-check the address and selected network.',
-  };
+  return { valid: true, normalized: trimmed };
 }
 
 export function normalizeLinkedWalletStatus(raw: unknown): LinkedWalletStatus {
@@ -178,7 +143,7 @@ export function parseLinkedWalletsFromAuthUser(
       network:
         typeof r.network === 'string' && r.network.trim()
           ? r.network.trim()
-          : detectNetworkFromAddress(address) || 'Ethereum (ERC20)',
+          : detectNetworkFromAddress(address) || 'External Wallet',
       walletProvider:
         typeof r.walletProvider === 'string' && r.walletProvider.trim()
           ? r.walletProvider.trim()
