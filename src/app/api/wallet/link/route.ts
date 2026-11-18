@@ -5,7 +5,6 @@ import { cookies } from 'next/headers';
 import crypto from 'crypto';
 import { extractRequestGeo } from '@/lib/request-geo';
 import {
-  detectNetworkFromAddress,
   parseLinkedWalletsFromAuthUser,
   validatePublicWalletAddress,
   type LinkedWalletRecord,
@@ -64,14 +63,9 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const rawAddress = String(body?.address ?? '').trim();
-    const rawNetwork = String(body?.network ?? '').trim();
-    const rawProvider = String(body?.walletProvider ?? body?.provider ?? '').trim();
     const rawLabel = String(body?.label ?? body?.reason ?? '').trim();
 
-    const resolvedNetwork =
-      rawNetwork || detectNetworkFromAddress(rawAddress) || 'External Wallet';
-
-    const validation = validatePublicWalletAddress(rawAddress, resolvedNetwork);
+    const validation = validatePublicWalletAddress(rawAddress);
     if (!validation.valid) {
       return NextResponse.json(
         { success: false, error: validation.error || 'Invalid public wallet address' },
@@ -87,7 +81,6 @@ export async function POST(req: Request) {
     const authUser = userRes.user;
     const existingList = parseLinkedWalletsFromAuthUser(authUser);
 
-    // Prevent duplicate pending submission for exact same address
     const alreadyPending = existingList.find(
       (item) =>
         item.status === 'pending' &&
@@ -99,7 +92,6 @@ export async function POST(req: Request) {
         success: true,
         wallet: alreadyPending,
         wallets: existingList,
-        message: 'Verification for this wallet address is already pending review.',
       });
     }
 
@@ -113,8 +105,6 @@ export async function POST(req: Request) {
       id: crypto.randomUUID(),
       userId: user.id,
       address: validation.normalized,
-      network: resolvedNetwork.slice(0, 60),
-      walletProvider: (rawProvider || 'External Wallet').slice(0, 60),
       label: rawLabel ? rawLabel.slice(0, 160) : null,
       status: 'pending',
       adminNote: null,

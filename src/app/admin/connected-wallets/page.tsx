@@ -19,9 +19,7 @@ import {
   ShieldCheck,
   Users,
   Wifi,
-  ExternalLink,
   Wallet,
-  Globe,
   RotateCcw,
   MessageSquare,
 } from "lucide-react";
@@ -54,33 +52,8 @@ function getInitials(name: string, email: string) {
 }
 
 function shortenAddress(addr: string) {
-  if (!addr || addr.length <= 18) return addr;
+  if (!addr || addr.length <= 20) return addr;
   return `${addr.slice(0, 10)}...${addr.slice(-8)}`;
-}
-
-function getNetworkBadgeStyle(network: string) {
-  const n = network.toLowerCase();
-  if (n.includes("eth")) return "bg-indigo-50 text-indigo-700 border-indigo-200";
-  if (n.includes("bnb") || n.includes("bep")) return "bg-amber-50 text-amber-800 border-amber-200";
-  if (n.includes("tron") || n.includes("trc")) return "bg-rose-50 text-rose-700 border-rose-200";
-  if (n.includes("sol")) return "bg-purple-50 text-purple-700 border-purple-200";
-  if (n.includes("btc") || n.includes("bitcoin")) return "bg-orange-50 text-orange-800 border-orange-200";
-  if (n.includes("poly") || n.includes("matic")) return "bg-violet-50 text-violet-700 border-violet-200";
-  if (n.includes("avax") || n.includes("avalanche")) return "bg-red-50 text-red-700 border-red-200";
-  return "bg-slate-100 text-slate-700 border-slate-200";
-}
-
-function getExplorerUrl(address: string, network: string): string | null {
-  if (!address) return null;
-  const n = network.toLowerCase();
-  if (n.includes("eth")) return `https://etherscan.io/address/${address}`;
-  if (n.includes("bnb") || n.includes("bep")) return `https://bscscan.com/address/${address}`;
-  if (n.includes("tron") || n.includes("trc")) return `https://tronscan.org/#/address/${address}`;
-  if (n.includes("sol")) return `https://solscan.io/account/${address}`;
-  if (n.includes("btc") || n.includes("bitcoin")) return `https://mempool.space/address/${address}`;
-  if (n.includes("poly") || n.includes("matic")) return `https://polygonscan.com/address/${address}`;
-  if (n.includes("avax") || n.includes("avalanche")) return `https://snowtrace.io/address/${address}`;
-  return null;
 }
 
 export default function AdminConnectedWalletsPage() {
@@ -94,7 +67,6 @@ export default function AdminConnectedWalletsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | LinkedWalletStatus>("all");
-  const [networkFilter, setNetworkFilter] = useState<string>("all");
 
   const [selectedRow, setSelectedRow] = useState<AdminConnectedWalletRow | null>(null);
   const [reviewNote, setReviewNote] = useState("");
@@ -174,7 +146,7 @@ export default function AdminConnectedWalletsPage() {
 
     if (
       customNote === undefined &&
-      !window.confirm(`Are you sure you want to ${label} this linked wallet?`)
+      !window.confirm(`Are you sure you want to ${label} this wallet connection?`)
     ) {
       return;
     }
@@ -233,10 +205,10 @@ export default function AdminConnectedWalletsPage() {
 
       toast.success(
         action === "approve"
-          ? "Linked wallet approved & synced to user dashboard"
+          ? "Wallet connection approved & synced"
           : action === "reject"
-          ? "Linked wallet rejected & synced to user dashboard"
-          : "Linked wallet reset to pending"
+          ? "Wallet connection rejected & synced"
+          : "Wallet connection reset to pending"
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error processing action";
@@ -247,7 +219,7 @@ export default function AdminConnectedWalletsPage() {
   };
 
   const handleDelete = async (row: AdminConnectedWalletRow) => {
-    if (!window.confirm("Remove this linked wallet record permanently?")) return;
+    if (!window.confirm("Remove this wallet connection record permanently?")) return;
 
     setProcessingId(row.id);
     try {
@@ -257,11 +229,11 @@ export default function AdminConnectedWalletsPage() {
       );
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to delete linked wallet");
+        throw new Error(data.error || "Failed to delete wallet connection");
       }
       setConnections((prev) => prev.filter((item) => item.id !== row.id));
       if (selectedRow?.id === row.id) setSelectedRow(null);
-      toast.success("Linked wallet record removed");
+      toast.success("Wallet connection record removed");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error deleting record";
       toast.error(msg);
@@ -274,27 +246,18 @@ export default function AdminConnectedWalletsPage() {
     let pending = 0;
     let approved = 0;
     let rejected = 0;
-    const netMap = new Map<string, number>();
 
     for (const c of connections) {
       if (c.status === "pending") pending++;
       else if (c.status === "approved") approved++;
       else if (c.status === "rejected") rejected++;
-
-      const net = c.network || "Other";
-      netMap.set(net, (netMap.get(net) || 0) + 1);
     }
-
-    const networks = Array.from(netMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
     return {
       total: connections.length,
       pending,
       approved,
       rejected,
-      networks,
     };
   }, [connections]);
 
@@ -302,13 +265,10 @@ export default function AdminConnectedWalletsPage() {
     const q = searchQuery.trim().toLowerCase();
     return connections.filter((c) => {
       if (statusFilter !== "all" && c.status !== statusFilter) return false;
-      if (networkFilter !== "all" && c.network !== networkFilter) return false;
 
       if (q) {
         const hay = [
           c.address,
-          c.network,
-          c.walletProvider,
           c.label || "",
           c.adminNote || "",
           c.ip || "",
@@ -325,7 +285,7 @@ export default function AdminConnectedWalletsPage() {
 
       return true;
     });
-  }, [connections, statusFilter, networkFilter, searchQuery]);
+  }, [connections, statusFilter, searchQuery]);
 
   return (
     <div className="w-full max-w-full font-sans text-gray-900 pb-16 animate-in fade-in duration-300">
@@ -333,11 +293,11 @@ export default function AdminConnectedWalletsPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2.5">
-            <Link2 size={24} className="text-blue-600 shrink-0" />
-            <span>Connected Wallets &amp; Verification</span>
+            <Link2 size={24} className="text-emerald-600 shrink-0" />
+            <span>Connected Wallets</span>
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Review users&apos; linked external public wallet addresses, networks, and approve or reject verification requests in real time.
+            View users&apos; submitted wallet addresses and connection reasons, and approve or reject verification requests.
           </p>
         </div>
 
@@ -372,13 +332,13 @@ export default function AdminConnectedWalletsPage() {
             disabled={refreshing}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition shadow-xs disabled:opacity-60"
           >
-            <RefreshCw size={14} className={refreshing ? "animate-spin text-blue-600" : ""} />
+            <RefreshCw size={14} className={refreshing ? "animate-spin text-emerald-600" : ""} />
             <span>Refresh</span>
           </button>
 
           <Link
             href="/admin/members"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-blue-600 text-white text-xs font-bold transition shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold transition shadow-xs"
           >
             <Users size={14} />
             <span>Manage Users</span>
@@ -393,19 +353,19 @@ export default function AdminConnectedWalletsPage() {
           onClick={() => setStatusFilter("all")}
           className={`text-left bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between transition ${
             statusFilter === "all"
-              ? "border-blue-400 ring-1 ring-blue-100"
+              ? "border-slate-400 ring-1 ring-slate-200"
               : "border-gray-200 hover:border-gray-300"
           }`}
         >
           <div className="min-w-0">
             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block truncate">
-              Total Linked
+              Total Requests
             </span>
             <span className="text-xl sm:text-2xl font-black text-gray-900">
               {metrics.total}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
             <Wallet size={19} />
           </div>
         </button>
@@ -443,7 +403,7 @@ export default function AdminConnectedWalletsPage() {
         >
           <div className="min-w-0">
             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block truncate">
-              Verified / Approved
+              Confirmed
             </span>
             <span className="text-xl sm:text-2xl font-black text-emerald-600">
               {metrics.approved}
@@ -477,64 +437,6 @@ export default function AdminConnectedWalletsPage() {
         </button>
       </div>
 
-      {/* Network Filter Pills (shown when networks exist) */}
-      {metrics.networks.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm mb-5">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-              <Globe size={13} className="text-blue-600" />
-              Filter by Network
-            </span>
-            {networkFilter !== "all" && (
-              <button
-                type="button"
-                onClick={() => setNetworkFilter("all")}
-                className="text-[11px] font-bold text-blue-600 hover:underline"
-              >
-                Show All Networks
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setNetworkFilter("all")}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                networkFilter === "all"
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-slate-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-              }`}
-            >
-              All ({metrics.total})
-            </button>
-            {metrics.networks.map((net) => {
-              const active = networkFilter === net.name;
-              return (
-                <button
-                  key={net.name}
-                  type="button"
-                  onClick={() => setNetworkFilter(active ? "all" : net.name)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                    active
-                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                      : "bg-white text-gray-800 border-gray-200 hover:border-blue-300 hover:bg-blue-50/40"
-                  }`}
-                >
-                  <span>{net.name}</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {net.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Search & Status Tabs */}
       <div className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm mb-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-lg">
@@ -544,10 +446,10 @@ export default function AdminConnectedWalletsPage() {
           />
           <input
             type="text"
-            placeholder="Search by public address, user, email, UID, network, provider, or IP..."
+            placeholder="Search by address, user, email, UID, reason, country, or IP..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#f9fafb] border border-gray-200 text-gray-900 text-xs sm:text-sm rounded-lg pl-9 pr-8 py-2 outline-none focus:border-blue-500 focus:bg-white transition"
+            className="w-full bg-[#f9fafb] border border-gray-200 text-gray-900 text-xs sm:text-sm rounded-lg pl-9 pr-8 py-2 outline-none focus:border-emerald-500 focus:bg-white transition"
           />
           {searchQuery && (
             <button
@@ -565,7 +467,7 @@ export default function AdminConnectedWalletsPage() {
             [
               { id: "all", label: "All", count: metrics.total },
               { id: "pending", label: "Pending", count: metrics.pending },
-              { id: "approved", label: "Approved", count: metrics.approved },
+              { id: "approved", label: "Confirmed", count: metrics.approved },
               { id: "rejected", label: "Rejected", count: metrics.rejected },
             ] as const
           ).map((tab) => (
@@ -575,7 +477,7 @@ export default function AdminConnectedWalletsPage() {
               onClick={() => setStatusFilter(tab.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                 statusFilter === tab.id
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-slate-900 text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -598,7 +500,7 @@ export default function AdminConnectedWalletsPage() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-center">
-            <Loader2 className="animate-spin text-blue-600 mb-3" size={28} />
+            <Loader2 className="animate-spin text-emerald-600 mb-3" size={28} />
             <p className="text-xs sm:text-sm font-medium text-gray-500">
               Loading connected wallets...
             </p>
@@ -612,17 +514,16 @@ export default function AdminConnectedWalletsPage() {
               No Connected Wallets Found
             </h3>
             <p className="text-xs text-gray-500 max-w-md mx-auto">
-              {searchQuery || statusFilter !== "all" || networkFilter !== "all"
-                ? "No linked wallet records match your current search or filters."
-                : "When users submit a public wallet address from Connect Wallet in their dashboard, it will appear here instantly for review and verification."}
+              {searchQuery || statusFilter !== "all"
+                ? "No wallet records match your current search or filters."
+                : "When users submit a wallet address from Connect Wallet in their dashboard, it will appear here immediately for review."}
             </p>
-            {(searchQuery || statusFilter !== "all" || networkFilter !== "all") && (
+            {(searchQuery || statusFilter !== "all") && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery("");
                   setStatusFilter("all");
-                  setNetworkFilter("all");
                 }}
                 className="mt-3 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-700 transition"
               >
@@ -637,8 +538,8 @@ export default function AdminConnectedWalletsPage() {
                 <tr className="bg-[#f9fafb] text-gray-600 uppercase tracking-wider border-b border-gray-200 font-bold text-[11px]">
                   <th className="py-3.5 px-3 w-12 text-center">#</th>
                   <th className="py-3.5 px-3 min-w-[200px]">User</th>
-                  <th className="py-3.5 px-3 min-w-[250px]">Public Address &amp; Network</th>
-                  <th className="py-3.5 px-3 min-w-[175px]">Purpose &amp; Origin</th>
+                  <th className="py-3.5 px-3 min-w-[230px]">Submitted Address</th>
+                  <th className="py-3.5 px-3 min-w-[190px]">Reason &amp; Origin</th>
                   <th className="py-3.5 px-3 min-w-[125px]">Submitted</th>
                   <th className="py-3.5 px-3 min-w-[115px] text-center">Status</th>
                   <th className="py-3.5 px-3 min-w-[185px] text-right">Actions</th>
@@ -648,7 +549,6 @@ export default function AdminConnectedWalletsPage() {
                 {filteredConnections.map((row, idx) => {
                   const isProcessing = processingId === row.id;
                   const initials = getInitials(row.user.displayName, row.user.email);
-                  const explorerUrl = getExplorerUrl(row.address, row.network);
 
                   return (
                     <tr key={row.id} className="hover:bg-gray-50/70 transition-colors">
@@ -661,7 +561,7 @@ export default function AdminConnectedWalletsPage() {
                             onClick={() => handleDelete(row)}
                             disabled={isProcessing}
                             className="p-1 hover:text-red-600 transition disabled:opacity-40"
-                            title="Delete linked wallet record"
+                            title="Delete wallet record"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -679,7 +579,7 @@ export default function AdminConnectedWalletsPage() {
                                 className="w-8 h-8 rounded-full object-cover border border-gray-200"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
                                 {initials}
                               </div>
                             )}
@@ -693,7 +593,7 @@ export default function AdminConnectedWalletsPage() {
                           <div className="min-w-0">
                             <Link
                               href={`/admin/members/${row.userId}`}
-                              className="font-bold text-gray-900 hover:text-blue-600 hover:underline block truncate max-w-[170px]"
+                              className="font-bold text-gray-900 hover:text-emerald-600 hover:underline block truncate max-w-[170px]"
                               title={row.user.displayName}
                             >
                               {row.user.displayName}
@@ -710,7 +610,7 @@ export default function AdminConnectedWalletsPage() {
                               <button
                                 type="button"
                                 onClick={() => handleCopy(row.user.walletUid!, "Account UID")}
-                                className="text-[10px] text-gray-400 font-mono hover:text-blue-600 inline-flex items-center gap-1 mt-0.5"
+                                className="text-[10px] text-gray-400 font-mono hover:text-emerald-600 inline-flex items-center gap-1 mt-0.5"
                               >
                                 <span>UID: {row.user.walletUid}</span>
                                 <Copy size={10} className="opacity-60" />
@@ -720,58 +620,31 @@ export default function AdminConnectedWalletsPage() {
                         </div>
                       </td>
 
-                      {/* Public Address & Network */}
+                      {/* Submitted Address */}
                       <td className="py-3.5 px-3">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[11px] font-bold ${getNetworkBadgeStyle(
-                                row.network
-                              )}`}
-                            >
-                              {row.network}
-                            </span>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[11px] font-semibold">
-                              {row.walletProvider}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(row.address, "Public Address")}
-                              className="font-mono text-[12px] text-gray-800 bg-gray-50 hover:bg-blue-50 hover:text-blue-700 border border-gray-200 px-2 py-0.5 rounded inline-flex items-center gap-1.5 transition"
-                              title={`Click to copy: ${row.address}`}
-                            >
-                              <span>{shortenAddress(row.address)}</span>
-                              <Copy size={11} className="opacity-60 shrink-0" />
-                            </button>
-                            {explorerUrl && (
-                              <a
-                                href={explorerUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1 text-gray-400 hover:text-blue-600 transition"
-                                title="Inspect address on block explorer"
-                              >
-                                <ExternalLink size={13} />
-                              </a>
-                            )}
-                          </div>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(row.address, "Wallet Address")}
+                          className="font-mono text-[12px] text-gray-800 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-700 border border-gray-200 px-2.5 py-1 rounded-lg inline-flex items-center gap-2 transition"
+                          title={`Click to copy: ${row.address}`}
+                        >
+                          <span>{shortenAddress(row.address)}</span>
+                          <Copy size={12} className="opacity-60 shrink-0" />
+                        </button>
                       </td>
 
-                      {/* Purpose & Origin */}
+                      {/* Reason & Origin */}
                       <td className="py-3.5 px-3">
                         <div className="space-y-1">
                           <p
-                            className="text-xs font-semibold text-gray-700 truncate max-w-[200px]"
-                            title={row.label || "External wallet verification"}
+                            className="text-xs font-semibold text-gray-800 truncate max-w-[210px]"
+                            title={row.label || "Wallet Connection"}
                           >
-                            {row.label || "External Wallet Link"}
+                            {row.label || "Wallet Connection"}
                           </p>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {(row.countryCode || row.countryName) && (
-                              <span className="inline-flex items-center gap-1 text-[11px] bg-blue-50/60 border border-blue-100 px-1.5 py-0.5 rounded">
+                              <span className="inline-flex items-center gap-1 text-[11px] bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
                                 <CountryFlag
                                   countryCode={row.countryCode}
                                   countryName={row.countryName}
@@ -811,7 +684,7 @@ export default function AdminConnectedWalletsPage() {
                         <div className="flex flex-col items-center gap-1">
                           {row.status === "approved" ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              <CheckCircle2 size={11} /> Approved
+                              <CheckCircle2 size={11} /> Confirmed
                             </span>
                           ) : row.status === "rejected" ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800 border border-red-200">
@@ -848,7 +721,7 @@ export default function AdminConnectedWalletsPage() {
                           </button>
 
                           {isProcessing ? (
-                            <Loader2 size={15} className="animate-spin text-blue-600 ml-1" />
+                            <Loader2 size={15} className="animate-spin text-emerald-600 ml-1" />
                           ) : row.status === "pending" ? (
                             <>
                               <button
@@ -921,8 +794,8 @@ export default function AdminConnectedWalletsPage() {
             <div className="flex items-start justify-between gap-3 pb-4 border-b border-gray-200 mb-5">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <ShieldCheck size={20} className="text-blue-600" />
-                  <span>Linked Public Wallet Verification</span>
+                  <ShieldCheck size={20} className="text-emerald-600" />
+                  <span>Wallet Connection Review</span>
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Submitted {formatFullTimestamp(selectedRow.submittedAt)}
@@ -947,7 +820,7 @@ export default function AdminConnectedWalletsPage() {
                     className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold text-sm flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 font-bold text-sm flex items-center justify-center shrink-0">
                     {getInitials(selectedRow.user.displayName, selectedRow.user.email)}
                   </div>
                 )}
@@ -965,37 +838,25 @@ export default function AdminConnectedWalletsPage() {
               </div>
               <Link
                 href={`/admin/members/${selectedRow.userId}`}
-                className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-500 text-xs font-bold text-gray-700 hover:text-blue-600 transition shrink-0"
+                className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:border-emerald-500 text-xs font-bold text-gray-700 hover:text-emerald-600 transition shrink-0"
               >
                 Open Member Profile
               </Link>
             </div>
 
-            {/* Public Address Highlight Box */}
+            {/* Submitted Wallet Address */}
             <div className="mb-5">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                  Linked Public Wallet Address
+                  Submitted Wallet Address
                 </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(selectedRow.address, "Public Address")}
-                    className="text-xs font-bold text-blue-600 hover:underline inline-flex items-center gap-1"
-                  >
-                    <Copy size={12} /> Copy
-                  </button>
-                  {getExplorerUrl(selectedRow.address, selectedRow.network) && (
-                    <a
-                      href={getExplorerUrl(selectedRow.address, selectedRow.network)!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-bold text-gray-600 hover:text-blue-600 inline-flex items-center gap-1"
-                    >
-                      <ExternalLink size={12} /> Explorer
-                    </a>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(selectedRow.address, "Wallet Address")}
+                  className="text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1"
+                >
+                  <Copy size={12} /> Copy
+                </button>
               </div>
               <div className="p-3.5 rounded-xl bg-slate-900 text-emerald-300 font-mono text-xs sm:text-sm break-all select-all">
                 {selectedRow.address}
@@ -1006,32 +867,10 @@ export default function AdminConnectedWalletsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                  Network
-                </span>
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-md border text-xs font-bold ${getNetworkBadgeStyle(
-                    selectedRow.network
-                  )}`}
-                >
-                  {selectedRow.network}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                  Wallet Provider
-                </span>
-                <span className="text-sm font-bold text-gray-900">
-                  {selectedRow.walletProvider}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                  Purpose / Label
+                  Reason for Connecting
                 </span>
                 <span className="text-xs font-semibold text-gray-800">
-                  {selectedRow.label || "External Wallet Verification"}
+                  {selectedRow.label || "Wallet Connection"}
                 </span>
               </div>
 
@@ -1055,9 +894,9 @@ export default function AdminConnectedWalletsPage() {
               </div>
             </div>
 
-            {/* Current Status & Review Metadata */}
+            {/* Review Metadata */}
             {selectedRow.reviewedAt && (
-              <div className="mb-5 text-xs text-gray-500 bg-blue-50/50 border border-blue-100 rounded-xl px-3.5 py-2.5">
+              <div className="mb-5 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5">
                 Last reviewed on{" "}
                 <strong className="text-gray-800">
                   {formatFullTimestamp(selectedRow.reviewedAt)}
@@ -1071,15 +910,15 @@ export default function AdminConnectedWalletsPage() {
               <label className="text-xs font-bold text-gray-700 block mb-1.5">
                 Admin Review Note{" "}
                 <span className="text-gray-400 font-normal">
-                  (Optional — displayed to user if rejected)
+                  (Optional — shown to user if rejected)
                 </span>
               </label>
               <textarea
                 value={reviewNote}
                 onChange={(e) => setReviewNote(e.target.value)}
                 rows={3}
-                placeholder="e.g., Address format confirmed on Ethereum mainnet, or Reason for rejection..."
-                className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 resize-none"
+                placeholder="Optional note for this review..."
+                className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-emerald-500 resize-none"
               />
             </div>
 
@@ -1107,7 +946,7 @@ export default function AdminConnectedWalletsPage() {
                   ) : (
                     <XCircle size={14} />
                   )}
-                  <span>Reject Verification</span>
+                  <span>Reject</span>
                 </button>
 
                 <button
@@ -1121,7 +960,7 @@ export default function AdminConnectedWalletsPage() {
                   ) : (
                     <CheckCircle2 size={14} />
                   )}
-                  <span>Approve Verification</span>
+                  <span>Approve</span>
                 </button>
               </div>
             </div>

@@ -6,8 +6,6 @@ export interface LinkedWalletRecord {
   id: string;
   userId: string;
   address: string;
-  network: string;
-  walletProvider: string;
   label: string | null;
   status: LinkedWalletStatus;
   adminNote: string | null;
@@ -19,29 +17,6 @@ export interface LinkedWalletRecord {
   reviewedBy: string | null;
 }
 
-export const SUPPORTED_WALLET_NETWORKS = [
-  'Ethereum (ERC20)',
-  'BNB Smart Chain (BEP20)',
-  'Tron (TRC20)',
-  'Solana (SOL)',
-  'Bitcoin (BTC)',
-  'Polygon (MATIC)',
-  'Avalanche (C-Chain)',
-] as const;
-
-export const SUPPORTED_WALLET_PROVIDERS = [
-  'MetaMask',
-  'Trust Wallet',
-  'Coinbase Wallet',
-  'Phantom',
-  'Ledger',
-  'TronLink',
-  'Exodus',
-  'SafePal',
-  'Bitget Wallet',
-  'Other',
-] as const;
-
 export const LINK_WALLET_REASONS = [
   'Get Access To This Wallet',
   'Transfer Assets Into This Wallet',
@@ -49,27 +24,8 @@ export const LINK_WALLET_REASONS = [
   'Verify External Wallet Ownership',
 ] as const;
 
-export function detectNetworkFromAddress(address: string): string | null {
-  const trimmed = address.trim();
-  if (!trimmed) return null;
-  if (/^0x[a-fA-F0-9]{40}$/.test(trimmed)) return 'Ethereum / EVM';
-  if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(trimmed)) return 'Tron (TRC20)';
-  if (/^(bc1[a-zA-HJ-NP-Z0-9]{25,62}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(trimmed)) {
-    return 'Bitcoin (BTC)';
-  }
-  if (/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(trimmed)) return 'Ripple (XRP)';
-  if (/^(ltc1[a-zA-HJ-NP-Z0-9]{25,62}|[LM3][a-km-zA-HJ-NP-Z1-9]{26,33})$/.test(trimmed)) {
-    return 'Litecoin (LTC)';
-  }
-  if (/^addr1[a-z0-9]{50,110}$/.test(trimmed)) return 'Cardano (ADA)';
-  if (/^(EQ|UQ)[A-Za-z0-9_-]{46}$/.test(trimmed)) return 'TON';
-  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed)) return 'Solana (SOL)';
-  return null;
-}
-
 export function validatePublicWalletAddress(
-  address: string,
-  _network?: string | null
+  address: string
 ): { valid: boolean; normalized: string; error?: string } {
   const trimmed = address.trim();
 
@@ -95,12 +51,11 @@ export function validatePublicWalletAddress(
     };
   }
 
-  // Allow any valid public blockchain address format (EVM, BTC, TRX, SOL, XRP, LTC, ADA, TON, Cosmos, Polkadot, etc.)
-  if (trimmed.length < 20 || trimmed.length > 128) {
+  if (trimmed.length < 16 || trimmed.length > 128) {
     return {
       valid: false,
       normalized: trimmed,
-      error: 'Please enter a valid public wallet address (20-128 characters).',
+      error: 'Please enter a valid public wallet address.',
     };
   }
 
@@ -140,14 +95,6 @@ export function parseLinkedWalletsFromAuthUser(
       id,
       userId: typeof r.userId === 'string' && r.userId.trim() ? r.userId.trim() : authUser?.id || '',
       address,
-      network:
-        typeof r.network === 'string' && r.network.trim()
-          ? r.network.trim()
-          : detectNetworkFromAddress(address) || 'External Wallet',
-      walletProvider:
-        typeof r.walletProvider === 'string' && r.walletProvider.trim()
-          ? r.walletProvider.trim()
-          : 'External Wallet',
       label: typeof r.label === 'string' && r.label.trim() ? r.label.trim() : null,
       status: normalizeLinkedWalletStatus(r.status),
       adminNote: typeof r.adminNote === 'string' && r.adminNote.trim() ? r.adminNote.trim() : null,

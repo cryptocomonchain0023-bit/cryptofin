@@ -2,7 +2,15 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Link2, Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronDown,
+  Loader2,
+  ShieldAlert,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   LINK_WALLET_REASONS,
@@ -18,7 +26,7 @@ export default function ConnectPage() {
   const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
 
   const [activeWallet, setActiveWallet] = useState<LinkedWalletRecord | null>(null);
-  const [step, setStep] = useState<"form" | "connecting" | "success" | "rejected">("form");
+  const [step, setStep] = useState<"form" | "pending" | "approved" | "rejected">("form");
 
   const checkStatus = useCallback(async () => {
     try {
@@ -27,8 +35,8 @@ export default function ConnectPage() {
       if (data.success) {
         const latest: LinkedWalletRecord | null = data.wallet || null;
         setActiveWallet(latest);
-        if (latest?.status === "approved") setStep("success");
-        else if (latest?.status === "pending") setStep("connecting");
+        if (latest?.status === "approved") setStep("approved");
+        else if (latest?.status === "pending") setStep("pending");
         else if (latest?.status === "rejected") setStep("rejected");
         else setStep("form");
       }
@@ -43,9 +51,9 @@ export default function ConnectPage() {
     checkStatus();
   }, [checkStatus]);
 
-  // Live polling when waiting for admin verification
+  // Quietly sync status while pending
   useEffect(() => {
-    if (step !== "connecting") return;
+    if (step !== "pending") return;
 
     const interval = setInterval(async () => {
       try {
@@ -55,22 +63,24 @@ export default function ConnectPage() {
           const latest: LinkedWalletRecord | null = data.wallet || null;
           setActiveWallet(latest);
           if (latest?.status === "approved") {
-            setStep("success");
+            setStep("approved");
             clearInterval(interval);
           } else if (latest?.status === "rejected") {
             setStep("rejected");
             clearInterval(interval);
           }
         }
-      } catch (e) {
-        console.error("Polling error", e);
+      } catch {
+        // Silent retry
       }
-    }, 4000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [step]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!reason) {
       toast.error("Please select a reason for connecting.");
       return;
@@ -78,7 +88,7 @@ export default function ConnectPage() {
 
     const validation = validatePublicWalletAddress(address);
     if (!validation.valid) {
-      toast.error(validation.error || "Please enter a valid public wallet address.");
+      toast.error(validation.error || "Please enter a valid wallet address.");
       return;
     }
 
@@ -96,13 +106,12 @@ export default function ConnectPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        toast.error(data.error || "Failed to connect wallet");
-        setLoading(false);
+        toast.error(data.error || "Unable to complete wallet connection.");
         return;
       }
 
       setActiveWallet(data.wallet || null);
-      setStep("connecting");
+      setStep("pending");
     } catch {
       toast.error("Network error. Please try again.");
     } finally {
@@ -113,182 +122,184 @@ export default function ConnectPage() {
   if (!isInitialCheckDone) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
-      </div>
-    );
-  }
-
-  if (step === "connecting" || step === "success" || step === "rejected") {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white p-4 flex flex-col pt-12 pb-32 items-center">
-        <div className="w-full max-w-4xl">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors font-bold text-sm mb-8"
-          >
-            <ChevronLeft size={20} />
-            Back
-          </button>
-
-          <div className="bg-[#0c1117] border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center min-h-[450px]">
-            <div className="w-16 h-16 bg-[#161b22] rounded-2xl flex items-center justify-center mb-6 shadow-xl border border-white/5">
-              {step === "rejected" ? (
-                <ShieldAlert size={28} className="text-red-500" />
-              ) : step === "success" ? (
-                <CheckCircle2 size={28} className="text-emerald-400" />
-              ) : (
-                <Link2 size={28} className="text-blue-500" />
-              )}
-            </div>
-
-            <h2 className="text-2xl font-bold mb-2">Connect wallet</h2>
-            <p className="text-zinc-500 text-sm mb-6 text-center max-w-sm">
-              Secure your assets. Link an external public wallet address to your account.
-            </p>
-
-            {activeWallet?.address && (
-              <div className="mb-8 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/10 font-mono text-xs text-zinc-300 max-w-full break-all text-center">
-                {activeWallet.address}
-              </div>
-            )}
-
-            {step === "rejected" ? (
-              <>
-                <div className="w-full max-w-2xl rounded-2xl bg-red-500/10 border border-red-500/20 p-5 shadow-lg text-center space-y-2">
-                  <p className="text-[15px] font-medium text-red-400 leading-relaxed">
-                    Connection Request Rejected. Please review your wallet address and ensure it is accurate before attempting to connect again.
-                  </p>
-                  {activeWallet?.adminNote && (
-                    <p className="text-xs text-red-300/90">
-                      Note: <span className="font-semibold">{activeWallet.adminNote}</span>
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    if (activeWallet?.label) setReason(activeWallet.label);
-                    if (activeWallet?.address) setAddress(activeWallet.address);
-                    setStep("form");
-                    setLoading(false);
-                  }}
-                  className="mt-8 px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-bold transition-colors text-white shadow-lg"
-                >
-                  Attempt Reconnection
-                </button>
-              </>
-            ) : (
-              <div className="w-full rounded-2xl bg-[#0062E5] p-5 shadow-lg">
-                <p className="text-[15px] font-medium text-white text-center leading-relaxed">
-                  {step === "connecting"
-                    ? "Please be patient while we establish a secure connection to your wallet. This may take a moment, and you'll be notified once it's complete."
-                    : "The connection to your wallet has been successfully established. You are now securely connected, and everything is set up and ready. Thank you for your cooperation!"}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        <Loader2 className="animate-spin text-[#10b981]" size={28} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-8 animate-in fade-in duration-500 pb-32">
-      <div className="max-w-2xl mx-auto pt-[max(env(safe-area-inset-top),1.5rem)]">
-        {/* BACK BUTTON */}
+    <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-6 md:px-8 pb-32 animate-in fade-in duration-300">
+      <div className="max-w-xl mx-auto pt-[max(env(safe-area-inset-top),1.25rem)]">
+        {/* Top Navigation */}
         <button
+          type="button"
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors font-bold text-sm mb-8"
+          className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors text-sm font-medium mb-8"
         >
-          <ChevronLeft size={20} />
-          Back
+          <ChevronLeft size={18} />
+          <span>Back</span>
         </button>
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Connect Wallet</h1>
-          <p className="text-zinc-500 text-sm mt-1">
-            Select your reason and enter your external public wallet address below.
-          </p>
-        </div>
+        {/* MATURE PENDING / COMPLETED SCREEN (No address displayed) */}
+        {step === "pending" && (
+          <div className="bg-[#141414] border border-white/[0.08] rounded-3xl p-8 sm:p-10 text-center shadow-2xl">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-[#10b981]/10 border border-[#10b981]/25 flex items-center justify-center">
+              <CheckCircle2 size={30} className="text-[#10b981]" />
+            </div>
 
-        <div className="space-y-6">
-          {/* SECTION 1: REASON FOR CONNECTING */}
-          <div className="space-y-2">
-            <label className="text-zinc-300 font-bold text-sm block">
-              Reason for Connecting
-            </label>
-            <div className="relative">
-              <select
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="w-full bg-[#151515] border border-white/10 rounded-xl p-4 text-zinc-200 font-medium outline-none focus:border-primary/60 appearance-none cursor-pointer transition-colors"
-              >
-                <option value="" disabled className="bg-[#151515]">
-                  Select the purpose for connecting this wallet
-                </option>
-                {LINK_WALLET_REASONS.map((item) => (
-                  <option key={item} value={item} className="bg-[#151515]">
-                    {item}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                <svg
-                  width="12"
-                  height="8"
-                  viewBox="0 0 12 8"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M1 1.5L6 6.5L11 1.5"
-                    stroke="#71717A"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-semibold text-zinc-300 tracking-wide mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+              <span>Pending Confirmation</span>
+            </div>
+
+            <h1 className="text-2xl font-semibold tracking-tight text-white mb-3">
+              Connection Request Completed
+            </h1>
+
+            <p className="text-sm text-zinc-400 leading-relaxed max-w-md mx-auto">
+              Your wallet connection has been submitted and is currently being processed by our team. Please check back later for final confirmation.
+            </p>
+
+            <div className="mt-8 pt-6 border-t border-white/[0.06] flex items-center justify-center gap-2 text-xs text-zinc-500">
+              <Clock size={14} className="text-zinc-500 shrink-0" />
+              <span>You may safely leave this page — your status will update automatically once confirmed.</span>
             </div>
           </div>
+        )}
 
-          {/* SECTION 2: WALLET ADDRESS INPUT */}
-          <div className="space-y-2">
-            <label className="text-zinc-300 font-bold text-sm block">
-              Wallet Address
-            </label>
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Paste or enter your public wallet address"
-              spellCheck={false}
-              autoComplete="off"
-              className="w-full bg-[#151515] border border-white/10 rounded-xl p-4 text-zinc-200 font-mono text-sm outline-none focus:border-primary/60 transition-colors"
-            />
-          </div>
+        {/* MATURE APPROVED / CONFIRMED SCREEN (No address displayed) */}
+        {step === "approved" && (
+          <div className="bg-[#141414] border border-white/[0.08] rounded-3xl p-8 sm:p-10 text-center shadow-2xl">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-[#10b981]/10 border border-[#10b981]/25 flex items-center justify-center">
+              <ShieldCheck size={30} className="text-[#10b981]" />
+            </div>
 
-          {/* EXPLANATION TEXT */}
-          <div className="space-y-1.5 pt-1">
-            <h4 className="text-zinc-300 font-bold text-sm">How does this work?</h4>
-            <p className="text-zinc-500 text-xs leading-relaxed">
-              Enter any external public wallet address you want linked to your account. Once submitted, our team verifies your connection request and syncs the status automatically.
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#10b981]/10 border border-[#10b981]/20 text-[11px] font-semibold text-[#10b981] tracking-wide mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
+              <span>Confirmed &amp; Active</span>
+            </div>
+
+            <h1 className="text-2xl font-semibold tracking-tight text-white mb-3">
+              Wallet Successfully Connected
+            </h1>
+
+            <p className="text-sm text-zinc-400 leading-relaxed max-w-md mx-auto">
+              Your external wallet connection has been reviewed and confirmed. Everything is now synced and active on your account.
             </p>
           </div>
+        )}
 
-          {/* SUBMIT BUTTON */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl mt-4 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <Loader2 size={20} className="animate-spin" />
-            ) : (
-              "Securely Connect Wallet"
+        {/* MATURE REJECTED SCREEN (No address displayed) */}
+        {step === "rejected" && (
+          <div className="bg-[#141414] border border-white/[0.08] rounded-3xl p-8 sm:p-10 text-center shadow-2xl">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <ShieldAlert size={28} className="text-red-400" />
+            </div>
+
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[11px] font-semibold text-red-400 tracking-wide mb-5">
+              <span>Action Required</span>
+            </div>
+
+            <h1 className="text-2xl font-semibold tracking-tight text-white mb-3">
+              Connection Not Confirmed
+            </h1>
+
+            <p className="text-sm text-zinc-400 leading-relaxed max-w-md mx-auto">
+              We could not confirm your recent wallet connection request. Please review your details and submit again.
+            </p>
+
+            {activeWallet?.adminNote && (
+              <div className="mt-5 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs text-zinc-300 max-w-md mx-auto">
+                <span className="text-zinc-500">Note: </span>
+                <span className="font-medium">{activeWallet.adminNote}</span>
+              </div>
             )}
-          </button>
-        </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setReason(activeWallet?.label || "");
+                setAddress("");
+                setStep("form");
+              }}
+              className="mt-8 w-full sm:w-auto px-8 py-3 rounded-xl bg-[#10b981] hover:bg-emerald-500 text-black text-sm font-semibold transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* SLEEK, SIMPLE FORM VIEW */}
+        {step === "form" && (
+          <div className="bg-[#141414] border border-white/[0.08] rounded-3xl p-6 sm:p-8 shadow-2xl">
+            <div className="mb-8">
+              <h1 className="text-2xl font-semibold tracking-tight text-white">
+                Connect Wallet
+              </h1>
+              <p className="text-zinc-400 text-sm mt-1.5">
+                Select your purpose and enter your external wallet address below.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* SECTION 1: REASON FOR CONNECTING */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
+                  Reason for Connecting
+                </label>
+                <div className="relative">
+                  <select
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3.5 pr-10 text-sm text-zinc-100 font-medium outline-none focus:border-[#10b981] transition-colors appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled className="bg-[#141414] text-zinc-500">
+                      Select a reason
+                    </option>
+                    {LINK_WALLET_REASONS.map((item) => (
+                      <option key={item} value={item} className="bg-[#141414] text-white">
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={16}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+                  />
+                </div>
+              </div>
+
+              {/* SECTION 2: WALLET ADDRESS */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
+                  Wallet Address
+                </label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Enter your wallet address"
+                  spellCheck={false}
+                  autoComplete="off"
+                  className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3.5 text-sm text-zinc-100 font-mono placeholder:font-sans placeholder:text-zinc-600 outline-none focus:border-[#10b981] transition-colors"
+                />
+              </div>
+
+              {/* SUBMIT */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#10b981] hover:bg-emerald-500 text-black font-semibold text-sm py-3.5 rounded-xl mt-2 transition-all active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  "Connect Wallet"
+                )}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

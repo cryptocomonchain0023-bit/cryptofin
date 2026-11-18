@@ -277,15 +277,11 @@ export async function POST(request: Request) {
             action === 'approve'
               ? emailLinkedWalletApproved(
                   userName,
-                  updatedRecord.address,
-                  updatedRecord.network,
-                  updatedRecord.walletProvider,
-                  dateUtc
+                  dateUtc,
+                  updatedRecord.label || undefined
                 )
               : emailLinkedWalletRejected(
                   userName,
-                  updatedRecord.address,
-                  updatedRecord.network,
                   dateUtc,
                   updatedRecord.adminNote || undefined
                 );
